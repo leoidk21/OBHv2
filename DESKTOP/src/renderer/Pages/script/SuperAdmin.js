@@ -1,10 +1,3 @@
-console.log("SuperAdmin.js is loaded!");
-
-console.log("🔍 DEBUG - Available objects:");
-console.log("- window.electronAPI:", window.electronAPI ? "EXISTS" : "MISSING");
-console.log("- window.supabase:", window.supabase ? "EXISTS" : "MISSING");
-console.log("- window.supabaseConfig:", window.supabaseConfig ? "EXISTS" : "MISSING");
-
 // ============================================
 // ADMIN LOGGER UTILITY (GLOBALLY ACCESSIBLE)
 // ============================================
@@ -204,126 +197,145 @@ const additionalCSS = `
 .action-delete { background-color: #f5c6cb; color: #721c24; }
 .action-unknown { background-color: #e9ecef; color: #495057; }
 
-.log-details {
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
-}
-
-.detail-row {
-    display: flex;
-    border-bottom: 1px solid #eee;
-    padding: 8px 0;
-}
-
-.detail-row label {
-    font-weight: bold;
-    min-width: 120px;
-}
-
-.log-details-json {
-    background: #f5f5f5;
-    padding: 10px;
-    border-radius: 4px;
-    max-height: 200px;
-    overflow-y: auto;
-    white-space: pre-wrap;
-    font-family: monospace;
-}
-
-.pagination-info {
-    margin-bottom: 10px;
-    color: #666;
-}
-
-.pagination-controls {
-    display: flex;
-    gap: 5px;
-    flex-wrap: wrap;
-}
-
 .modal-overlay {
     position: fixed;
     top: 0;
     left: 0;
-    right: 0;
-    bottom: 0;
-    background: rgba(0, 0, 0, 0.5);
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.55);
     display: flex;
     align-items: center;
     justify-content: center;
-    z-index: 1000;
+    z-index: 99999;
 }
 
 .modal-content {
-    background: white;
-    border-radius: 8px;
-    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-    max-width: 90%;
-    max-height: 90%;
-    overflow: auto;
-    width: 600px;
+    width: 360px;
+    background: #ffffff;
+    padding: 20px 20px;
+    border-radius: 10px;
+    box-shadow: 0 8px 20px rgba(0,0,0,0.15);
+    animation: fadeIn 0.25s ease-out;
+    max-height: 90vh;
+    overflow-y: auto;
+    font-family: 'Poppins', sans-serif;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: scale(0.95); }
+    to { opacity: 1; transform: scale(1); }
 }
 
 .modal-header {
     display: flex;
-    justify-content: space-between;
     align-items: center;
-    padding: 16px 20px;
-    border-bottom: 1px solid #eee;
+    justify-content: space-between;
+    margin-bottom: 20px;
 }
 
 .modal-header h3 {
+    font-size: 20px;
+    font-weight: 600;
     margin: 0;
-    flex: 1;
 }
 
 .modal-close {
     background: none;
     border: none;
-    font-size: 24px;
+    font-size: 25px;
     cursor: pointer;
-    color: #666;
-    padding: 0;
-    width: 30px;
-    height: 30px;
+    line-height: 1;
+}
+
+.log-details {
     display: flex;
-    align-items: center;
-    justify-content: center;
+    flex-direction: column;
+    gap: 12px;
 }
 
-.modal-body {
-    padding: 20px;
+.detail-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: start;
+    font-size: 14px;
+    border-bottom: 1px solid #eee;
+    padding-bottom: 10px;
 }
 
-.modal-footer {
-    padding: 16px 20px;
-    border-top: 1px solid #eee;
-    text-align: right;
+.detail-row label {
+    width: 120px;
+    font-family: 'Poppins', sans-serif;
 }
 
-.event-details-grid {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 10px;
-    margin-top: 10px;
-}
-
-.event-detail-item {
-    padding: 8px;
-    background: #f8f9fa;
-    border-radius: 4px;
-}
-
-.event-detail-label {
-    font-weight: bold;
-    color: #495057;
+.role-badge,
+.action-badge {
+    padding: 3px 10px;
+    border-radius: 5px;
     font-size: 12px;
+    font-weight: 500;
+    display: inline-block;
+    text-transform: capitalize;
 }
 
-.event-detail-value {
-    color: #212529;
-    margin-top: 4px;
+.role-admin {
+    background: #e8efff;
+    color: #2255d4;
+}
+
+.role-super-admin {
+    background: #ffe7e7;
+    color: #d93025;
+}
+
+.action-reminder,
+.action-sends,
+.action-sent,
+.action-sends_a_reminder,
+.actions-update-payment-status {
+    background: #fff4cf;
+    color: #b38b00;
+}
+
+.action-login {
+    background: #e8ffe9;
+    color: #269740;
+}
+
+.action-update {
+    background: #e8f1ff;
+    color: #2d63c8;
+}
+
+.log-details-json {
+    background: #f8f8f8;
+    padding: 12px;
+    border-radius: 8px;
+    font-size: 13px;
+    line-height: 1.4;
+    overflow-x: auto;
+    white-space: pre-wrap;
+    border-left: 3px solid #dcdcdc;
+}
+
+/* === FOOTER === */
+.modal-footer {
+    margin-top: 15px;
+}
+
+.btn.btn-secondary {
+    width: 100%;
+    padding: 8px 58px;
+    background: #f1f1f1;
+    border-radius: 6px;
+    border: none;
+    cursor: pointer;
+    font-size: 14px;
+    transition: 0.2s;
+}
+
+.btn.btn-secondary:hover {
+    background: #e3e3e3;
 }
 `;
 
@@ -812,9 +824,6 @@ function formatEventDetails(details) {
     if (cleanDetails.event_name) {
         formattedDetails += `Event: ${cleanDetails.event_name}\n`;
     }
-    if (cleanDetails.event_id) {
-        formattedDetails += `Event ID: ${cleanDetails.event_id}\n`;
-    }
     if (cleanDetails.client_name) {
         formattedDetails += `Client: ${cleanDetails.client_name}\n`;
     }
@@ -824,10 +833,6 @@ function formatEventDetails(details) {
     if (cleanDetails.reason) {
         formattedDetails += `Reason: ${cleanDetails.reason}\n`;
     }
-    if (cleanDetails.reminder_type) {
-        formattedDetails += `Reminder Type: ${cleanDetails.reminder_type}\n`;
-    }
-    
     // If no common fields found, show the raw details
     if (!formattedDetails) {
         return JSON.stringify(cleanDetails, null, 2);
@@ -1440,25 +1445,33 @@ async function loadStats() {
  */
 function setupLogout() {
     const logoutBtn = document.getElementById("logoutBtn");
-    if (logoutBtn) {
-        logoutBtn.addEventListener("click", async (e) => {
-            e.preventDefault();
-            if (confirm("Are you sure you want to logout?")) {
-                try {
-                    await supabase.auth.signOut();
-                    localStorage.removeItem("token");
-                    localStorage.removeItem("adminData");
-                    window.location.href = "Auth/LoginPage.html";
-                } catch (error) {
-                    console.error("Logout error:", error);
-                    // Force logout even if there's an error
-                    localStorage.removeItem("token");
-                    localStorage.removeItem("adminData");
-                    window.location.href = "Auth/LoginPage.html";
-                }
-            }
-        });
-    }
+    if (!logoutBtn) return;
+
+    logoutBtn.addEventListener("click", async (e) => {
+        e.preventDefault();
+        if (!confirm("Are you sure you want to logout?")) return;
+
+        try {
+            console.log("Logging out...");
+            await supabase.auth.signOut();
+            localStorage.removeItem("token");
+            localStorage.removeItem("adminData");
+
+            // 👇 Add a short delay before redirect to let Electron release focus
+            setTimeout(() => {
+                window.location.href = "Auth/LoginPage.html?" + Date.now();
+            }, 200);
+        } catch (error) {
+            console.error("Logout error:", error);
+            localStorage.removeItem("token");
+            localStorage.removeItem("adminData");
+
+            // Even on error, still delay the redirect slightly
+            setTimeout(() => {
+                window.location.href = "Auth/LoginPage.html?" + Date.now();
+            }, 200);
+        }
+    });
 }
 
 /**
@@ -1485,7 +1498,7 @@ function setupTabs() {
             const titles = {
                 logs: "Admin Task Logs",
                 admins: "Manage Administrators",
-                qr: "Scan QR Code",
+                qr: "Mobile App Installation",
                 gallery: "Gallery Management",
             };
             

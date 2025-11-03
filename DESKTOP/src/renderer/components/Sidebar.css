@@ -58,7 +58,7 @@ aside nav + nav {
     align-items: flex-start;
     border-right: 2px solid #e5e5e5;
     box-shadow: rgba(99, 99, 99, 0.2) 0px 2px 8px 0px;
-    background: linear-gradient(180deg, #ffffff 0%, #fafafa 40%, #f0f0f0 100%);
+    background-color: #FFF;
 }
 
 .logo {

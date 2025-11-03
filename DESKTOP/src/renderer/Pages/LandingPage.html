@@ -16,17 +16,16 @@
   <link rel="stylesheet" href="../Styles/GuestPage.css">
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script>
-    console.log("✅ LandingPage initializing Supabase...");
+    console.log("LandingPage initializing Supabase...");
 
     if (window.supabaseConfig && window.supabaseConfig.isConfigured) {
-      console.log("✅ Creating Supabase client from preload config...");
+      console.log("Creating Supabase client from preload config...");
       window.supabase = supabase.createClient(
         window.supabaseConfig.url,
         window.supabaseConfig.anonKey
       );
-      console.log("✅ Supabase client is ready:", window.supabase);
     } else {
-      console.error("❌ Supabase config missing in LandingPage");
+      console.error("Supabase config missing in LandingPage");
       alert("Missing Supabase configuration. Please restart the app.");
     }
   </script>
@@ -38,7 +37,7 @@
       <div class="content-container">
         <div class="landing-content">
         <div class="content">
-          <h1>Admin Dashboard</h1>  
+          <h1 class="title">Admin Dashboard</h1>  
           <div class="notification-container">
             <div class="notification-bell" id="notificationBell">
               <svg width="26" height="26" viewBox="0 0 26 26" fill="none" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
@@ -123,7 +122,7 @@
 
           <section class="client-requests-overview" id="upcoming-events-section">
             <div class="upper">
-              <h2 class="title">Upcoming Events</h2>
+              <h2 class="upper-title">Upcoming Events</h2>
             </div>  
 
             <!-- UPCOMING EVENTS TABLE -->
@@ -155,7 +154,7 @@
           <!-- PAST EVENTS TABLE -->
           <section class="client-requests-overview" id="past-events-section">
             <div class="upper">
-              <h2 class="title">Past Events</h2>
+              <h2 class="upper-title">Past Events</h2>
             </div>  
 
             <div class="table-container">

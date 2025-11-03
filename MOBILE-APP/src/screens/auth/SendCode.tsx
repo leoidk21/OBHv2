@@ -14,7 +14,7 @@ import { useRoute, RouteProp } from '@react-navigation/native';
 import { verifyCode } from '../auth/user-auth';
 
 const SignUp = () => {
-  const [digits, setDigits] = useState(['', '', '', '']);
+  const [digits, setDigits] = useState(['', '', '', '', '', '']);
   const inputRefs = useRef(digits.map(() => createRef()));
 
   const handleDigitChange = (index: number, value: string) => {
@@ -41,8 +41,8 @@ const SignUp = () => {
   const handleVerifyCode = async () => {
     const code = digits.join('');
 
-    if (code.length !== 4) {
-      Alert.alert("Error", "Please enter a 4-digit code.");
+    if (code.length !== 6) {
+      Alert.alert("Error", "Please enter a 6-digit code.");
       return;
     }
 
@@ -55,10 +55,10 @@ const SignUp = () => {
     try {
       await verifyCode(email, code);
       Alert.alert("Success", "Code verified successfully!");
-      navigation.navigate('ResetPass', { email, code });
+      navigation.navigate('ResetPass', { email });
     } catch (error: any) {
-      console.log(error);
-      const errorMessage = error?.error || 'Invalid or expired code';
+      console.log('Verify code error:', error);
+      const errorMessage = error?.message || 'Invalid or expired code';
       Alert.alert("Verification Failed", errorMessage);
     } finally {
       setLoading(false);

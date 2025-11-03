@@ -26,13 +26,11 @@ const ResetPass = () => {
   const [confirmPassword, setConfirmPassword] = useState('');
 
   const handleResetPassword = async () => {
-    // Validation
     if (!newPassword || !confirmPassword) {
       Alert.alert("Error", "Please fill in all fields.");
       return;
     }
 
-    // Password validation
     if (newPassword !== confirmPassword) {
       Alert.alert("Error", "Passwords do not match.");
       return;
@@ -44,13 +42,13 @@ const ResetPass = () => {
     }
 
     try {
-      await resetPassword(email, code, newPassword);
+      await resetPassword(email, newPassword);
       Alert.alert("Success", "Password reset successfully!", [
         { text: "OK", onPress: () => navigation.navigate('SignIn') }
       ]);
     } catch (error: any) {
       console.error('Error resetting password:', error);
-      const errorMessage = error?.error || 'Failed to reset password';
+      const errorMessage = error?.message || 'Failed to reset password';
       Alert.alert("Error", errorMessage);
     }
   };

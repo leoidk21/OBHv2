@@ -24,17 +24,17 @@
 
 .going {
     color: #166534;
-    background: #dcfce7;
+    background: linear-gradient(135deg, #dcfce7 0%, #bbf7d0 100%);
 }
 
 .pending {
     color: #9a3412;
-    background: #ffedd5;
+    background: linear-gradient(135deg, #ffedd5 0%, #fed7aa 100%);
 }
 
 .declined {
     color: #991b1b;
-    background: #fee2e2;
+    background: linear-gradient(135deg, #fee2e2 0%, #fca5a5 100%);
 }
 
 .card h2 {

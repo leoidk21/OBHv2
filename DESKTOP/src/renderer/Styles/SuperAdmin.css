@@ -59,12 +59,12 @@ p, h1, h2, h3, h4, h5, h6 {
     flex-direction: column;
     align-items: flex-start;
     border-right: 2px solid #e5e5e5;
-    background: linear-gradient(120deg, #FFD1D1, #C36B6B, #FFD1D1);
+    background-color: #FFF;
     box-shadow: rgba(99, 99, 99, 0.2) 0px 2px 8px 0px;
 }
 
 .admin-title {
-    color: #FFF;
+    color: #000;
     line-height: 1;
     font-weight: 600;
 }
@@ -76,14 +76,14 @@ p, h1, h2, h3, h4, h5, h6 {
 }
 
 .menu-text {
-    color: #FFF;
+    color: #000;
     margin-bottom: 0.5rem;
 }
 
 .menu-item {
     gap: 12px;
     display: flex;
-    color: #FFF;
+    color: #000;
     list-style: none;
     font-size: 1.15rem;
     border-radius: 6px;
@@ -100,7 +100,7 @@ p, h1, h2, h3, h4, h5, h6 {
     max-height: 50%;
     min-width: 250px;
     border-radius: 6px;
-    background-color: #FFF;
+    background-color: #e5e5e5;
 }
 
 .menu-item.active {
@@ -109,7 +109,7 @@ p, h1, h2, h3, h4, h5, h6 {
     max-height: 50%;
     min-width: 250px;
     border-radius: 6px;
-    background-color: #FFF;
+    background-color: #e5e5e5;
 }
 
 .account-section {
@@ -133,7 +133,7 @@ p, h1, h2, h3, h4, h5, h6 {
 }
 
 .user-details p {
-    color: #FFF;
+    color: #000;
 }
 
 .user-email { 
@@ -399,13 +399,12 @@ p, h1, h2, h3, h4, h5, h6 {
 }
 
 .download-btn {
-    color: #333;
     border: none;
+    color: #FFF;
     cursor: pointer;
     border-radius: 5px;
     padding: 0.5rem 1rem;
-    background-color: #FFF;
-    border: 2px solid #007bff;
+    background-color: #007bff;
 }
 
 .generate-btn {
@@ -714,7 +713,6 @@ p, h1, h2, h3, h4, h5, h6 {
     max-width: 90vw;
     max-height: 90vh;
     position: relative;
-    align-items: center;
     flex-direction: column;
 }
 

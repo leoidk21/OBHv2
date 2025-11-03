@@ -33,11 +33,11 @@ const createWindow = () => {
     },
   });
 
-  // ✅ Hide the top menu bar
+  // Hide the top menu bar
   Menu.setApplicationMenu(null);
   mainWindow.setMenuBarVisibility(false);
 
-  // ✅ Right-click context menu with Reload + Inspect Element
+  // Right-click context menu with Reload + Inspect Element
   mainWindow.webContents.on("context-menu", (e, params) => {
     const contextMenu = Menu.buildFromTemplate([
       {
@@ -58,7 +58,7 @@ const createWindow = () => {
     contextMenu.popup({ window: mainWindow });
   });
 
-  // ✅ Keyboard shortcut for DevTools toggle
+  // Keyboard shortcut for DevTools toggle
   app.whenReady().then(() => {
     globalShortcut.register("Control+Shift+I", () => {
       if (mainWindow.webContents.isDevToolsOpened()) {
@@ -73,17 +73,17 @@ const createWindow = () => {
     });
   });
 
-  // ✅ Load your login page
+  // Load your login page
   const loginPagePath = path.join(__dirname, "src", "renderer", "Pages", "Auth", "LoginPage.html");
-  console.log("📄 Loading login page from:", loginPagePath);
+  console.log("Loading login page from:", loginPagePath);
 
   if (fs.existsSync(loginPagePath)) {
     mainWindow
       .loadFile(loginPagePath)
-      .then(() => console.log("✅ Login page loaded successfully"))
-      .catch((err) => console.error("❌ Error loading login page:", err));
+      .then(() => console.log("Login page loaded successfully"))
+      .catch((err) => console.error(" Error loading login page:", err));
   } else {
-    console.error("❌ Login page not found");
+    console.error("Login page not found");
   }
 
   mainWindow.once("ready-to-show", () => {
@@ -92,14 +92,14 @@ const createWindow = () => {
   });
 };
 
-// 🟢 App lifecycle
+// App lifecycle
 app.whenReady().then(() => {
-  console.log("🚀 Electron app starting...");
+  console.log("Electron app starting...");
   createWindow();
 });
 
 app.on("window-all-closed", () => {
-  console.log("👋 All windows closed - quitting app");
+  console.log(" windows closed - quitting app");
   if (process.platform !== "darwin") app.quit();
 });
 

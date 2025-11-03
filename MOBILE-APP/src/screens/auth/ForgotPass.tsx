@@ -12,9 +12,10 @@ import { Alert } from 'react-native';
 
 import { forgotPassword } from '../auth/user-auth'; 
 
-const SignUp = () => {
+const ForgotPass = () => {
   const [email, setEmail] = useState('');
-  const forgotText = "Enter your account email and we’ll send a reset code.";
+  const [loading, setLoading] = useState(false); // Add loading state
+  const forgotText = "Enter your account email and we'll send a reset code.";
   const navigation: NavigationProp<ParamListBase> = useNavigation();
 
   const handleForgotPassword = async () => {
@@ -22,14 +23,23 @@ const SignUp = () => {
       Alert.alert("Missing email", "Please enter your email address.");
       return;
     }
+
+    setLoading(true);
     try {
       await forgotPassword(email);
-      Alert.alert("Success", "Verification code sent to your email.");
-      navigation.navigate('SendCode', { email });
+      
+      Alert.alert(
+        "Check Your Email", 
+        `We've sent a 6-digit verification code to ${email}. Please check your inbox and enter the code on the next screen.`,
+        [{ text: "Continue", onPress: () => navigation.navigate('SendCode', { email }) }]
+      );
+      
     } catch (error: any) {
-      const errorMessage = error?.error || 'Failed to send code';
+      console.error('Forgot password error:', error);
+      const errorMessage = error?.message || 'Failed to send verification code';
       Alert.alert("Error", errorMessage);
-      console.log(error);
+    } finally {
+      setLoading(false);
     }
   }
 
@@ -151,5 +161,4 @@ const styles = StyleSheet.create({
 
 });
 
-export default SignUp;
-
+export default ForgotPass;

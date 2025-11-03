@@ -74,7 +74,7 @@ router.post('/signup', async (req, res) => {
                 id: user.id,
                 email: user.email, 
                 role: user.role,
-                type: 'mobile'  // ADD THIS LINE
+                type: 'mobile'
             },
             process.env.JWT_SECRET,
             { 

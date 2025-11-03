@@ -6,14 +6,14 @@ if (window.__LandingPageModuleInstance) {
     // ADD ADMIN LOGGER TO LANDING PAGE
     // ============================================
     if (!window.AdminLogger) {
-    console.log("🔄 Loading AdminLogger for Landing Page...");
+    console.log("Loading AdminLogger for Landing Page...");
     window.AdminLogger = {
         API_BASE: "https://vxukqznjkdtuytnkhldu.supabase.co/rest/v1",
         SUPABASE_ANON_KEY: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZ4dWtxem5qa2R0dXl0bmtobGR1Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2MTI0NDE4MCwiZXhwIjoyMDc2ODIwMTgwfQ.7hCf7BDqlVuNkzP1CcbORilAzMqOHhexP4Y7bsTPRJA",
 
         /**
          * Get current admin ID
-         */
+        */
         async getCurrentAdminId() {
             try {
                 console.log("🔍 Getting admin ID from Landing Page...");
@@ -22,7 +22,7 @@ if (window.__LandingPageModuleInstance) {
                 if (window.supabase && window.supabase.auth) {
                     const { data: { session }, error } = await window.supabase.auth.getSession();
                     if (!error && session?.user?.id) {
-                        console.log("✅ Using admin ID from session:", session.user.id);
+                        console.log("Using admin ID from session:", session.user.id);
                         return session.user.id;
                     }
                 }
@@ -33,7 +33,7 @@ if (window.__LandingPageModuleInstance) {
                     try {
                         const admin = JSON.parse(adminData);
                         if (admin.id) {
-                            console.log("✅ Using admin ID from localStorage:", admin.id);
+                            console.log("Using admin ID from localStorage:", admin.id);
                             return admin.id;
                         }
                     } catch (e) {
@@ -49,23 +49,23 @@ if (window.__LandingPageModuleInstance) {
                     console.log("🔍 Looking up admin ID by email:", adminEmail);
                     const adminId = await this.lookupAdminIdByEmail(adminEmail);
                     if (adminId) {
-                        console.log("✅ Found admin ID by email:", adminId);
+                        console.log("Found admin ID by email:", adminId);
                         return adminId;
                     }
                 }
 
-                console.warn("⚠️ No admin ID found in Landing Page");
+                console.warn("No admin ID found in Landing Page");
                 return null;
 
             } catch (error) {
-                console.error("❌ Error getting admin ID:", error);
+                console.error("Error getting admin ID:", error);
                 return null;
             }
         },
 
         /**
          * Lookup admin ID by email
-         */
+        */
         async lookupAdminIdByEmail(email) {
             try {
                 const response = await fetch(
@@ -94,15 +94,15 @@ if (window.__LandingPageModuleInstance) {
 
         /**
          * Log admin action to database
-         */
+        */
         async logAction(action, targetPage, details = {}) {
             try {
-                console.log(`📝 Landing Page - Logging: ${action} on ${targetPage}`, details);
+                console.log(`Landing Page - Logging: ${action} on ${targetPage}`, details);
                 
                 const adminId = await this.getCurrentAdminId();
                 
                 if (!adminId) {
-                    console.warn("⚠️ Cannot log action: No admin ID");
+                    console.warn("Cannot log action: No admin ID");
                     this.storeLogLocally(action, targetPage, details);
                     return { success: false, error: "No admin ID" };
                 }
@@ -115,7 +115,7 @@ if (window.__LandingPageModuleInstance) {
                     timestamp: new Date().toISOString()
                 };
 
-                console.log("📝 Log entry:", logEntry);
+                console.log("Log entry:", logEntry);
 
                 const response = await fetch(`${this.API_BASE}/admin_logs`, {
                     method: "POST",
@@ -134,11 +134,11 @@ if (window.__LandingPageModuleInstance) {
                 }
 
                 const data = await response.json();
-                console.log("✅ Action logged successfully:", data);
+                console.log("Action logged successfully:", data);
                 return { success: true, data };
 
             } catch (error) {
-                console.error("❌ Failed to log action:", error);
+                console.error("Failed to log action:", error);
                 this.storeLogLocally(action, targetPage, details);
                 return { success: false, error: error.message };
             }
@@ -146,7 +146,7 @@ if (window.__LandingPageModuleInstance) {
 
         /**
          * Store log locally as fallback
-         */
+        */
         storeLogLocally(action, targetPage, details) {
             try {
                 const logs = JSON.parse(localStorage.getItem('pending_admin_logs') || '[]');
@@ -158,13 +158,13 @@ if (window.__LandingPageModuleInstance) {
                     admin_id: localStorage.getItem("adminData") ? JSON.parse(localStorage.getItem("adminData")).id : 'unknown'
                 });
                 localStorage.setItem('pending_admin_logs', JSON.stringify(logs));
-                console.log("💾 Log stored locally for later sync");
+                console.log("Log stored locally for later sync");
             } catch (error) {
                 console.error("Failed to store log locally:", error);
             }
         }
     };
-    console.log("✅ AdminLogger loaded for Landing Page");
+    console.log("AdminLogger loaded for Landing Page");
 }
 
     window.LandingPageModule = (function () {

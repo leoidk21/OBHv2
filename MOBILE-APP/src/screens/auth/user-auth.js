@@ -314,17 +314,160 @@ export const updateProfile = async (firstName, lastName, email) => {
     }
 };
 
-// Password reset with Supabase
-export const resetPassword = async (email) => {
+/*
+/ CUSTOM VERIFICATION CODE SYSTEM
+*/
+
+// Send custom verification code
+export const sendVerificationCode = async (email) => {
     try {
-        const { data, error } = await supabase.auth.resetPasswordForEmail(email);
+        console.log('Sending verification code to:', email);
+        
+        // Check if email exists in mobile_users
+        const { data: user, error: userError } = await supabase
+            .from('mobile_users')
+            .select('email')
+            .eq('email', email)
+            .single();
+
+        if (userError || !user) {
+            throw new Error('No account found with this email address.');
+        }
+
+        // Generate a 6-digit code
+        const verificationCode = Math.floor(100000 + Math.random() * 900000).toString();
+        
+        // Delete any existing codes for this email
+        await supabase
+            .from('verification_codes')
+            .delete()
+            .eq('email', email);
+
+        // Store the new code in database
+        const { data, error } = await supabase
+            .from('verification_codes')
+            .insert([
+                {
+                    email: email,
+                    code: verificationCode,
+                    expires_at: new Date(Date.now() + 15 * 60 * 1000).toISOString(),
+                    used: false
+                }
+            ])
+            .select()
+            .single();
+        
         if (error) throw error;
-        return data;
+        
+        // Send email via Edge Function
+        const { data: emailData, error: emailError } = await supabase.functions.invoke('send-verification-email', {
+            body: { 
+                email: email, 
+                verificationCode: verificationCode 
+            }
+        });
+
+        if (emailError) {
+            console.error('Email sending failed:', emailError);
+            throw new Error('Failed to send verification email. Please try again.');
+        }
+        
+        return { 
+            success: true, 
+            message: 'Verification code sent to your email.'
+        };
+    } catch (error) {
+        console.error('Send verification code error:', error);
+        throw error;
+    }
+};
+
+// Verify the custom code
+export const verifyCode = async (email, code) => {
+    try {
+        console.log('Verifying code:', { email, code });
+
+        // Verify against database
+        const { data, error } = await supabase
+            .from('verification_codes')
+            .select('*')
+            .eq('email', email)
+            .eq('code', code)
+            .eq('used', false)
+            .gt('expires_at', new Date().toISOString())
+            .single();
+        
+        if (error || !data) {
+            throw new Error('Invalid or expired verification code.');
+        }
+        
+        // Mark code as used
+        await supabase
+            .from('verification_codes')
+            .update({ used: true })
+            .eq('id', data.id);
+        
+        return { 
+            success: true,
+            message: 'Code verified successfully.'
+        };
+    } catch (error) {
+        console.error('Verify code error:', error);
+        throw error;
+    }
+};
+
+// Reset password after code verification
+export const resetPassword = async (email, newPassword) => {
+    try {
+        console.log('Resetting password for:', email);
+        
+        // Update password in Supabase Auth
+        const { data: authData, error: authError } = await supabase.auth.updateUser({
+            password: newPassword
+        });
+
+        if (authError) {
+            console.error('Auth password update error:', authError);
+            throw new Error('Failed to update password. Please try again.');
+        }
+
+        // Also update in your mobile_users table if you store passwords there
+        const { error: mobileError } = await supabase
+            .from('mobile_users')
+            .update({ 
+                password: newPassword, // Note: This will store plain text - consider hashing
+                updated_at: new Date().toISOString()
+            })
+            .eq('email', email);
+
+        if (mobileError) {
+            console.error('Mobile users update error:', mobileError);
+            // Don't throw here as auth update was successful
+        }
+
+        console.log('Password reset successfully');
+        return { 
+            success: true,
+            message: 'Password reset successfully!'
+        };
     } catch (error) {
         console.error('Reset password error:', error);
         throw error;
     }
 };
+
+// Update forgotPassword to use custom system
+export const forgotPassword = async (email) => {
+    try {
+        const data = await sendVerificationCode(email);
+        return data;
+    } catch (error) {
+        console.error('Forgot password error:', error);
+        throw error;
+    }
+};
+
 
 // Check Supabase session
 export const checkAuthSession = async () => {

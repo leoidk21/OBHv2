@@ -244,10 +244,24 @@ document.addEventListener("DOMContentLoaded", () => {
   // ============================================
   async function logout() {
     console.log("Logging out...");
-    await supabase.auth.signOut();
-    localStorage.removeItem("token");
-    localStorage.removeItem("adminData");
-    window.location.href = "Auth/LoginPage.html";
+
+    try {
+      await supabase.auth.signOut();
+      localStorage.clear();
+      sessionStorage.clear();
+
+      // short delay fixes focus loss
+      setTimeout(() => {
+        window.location.href = "Auth/LoginPage.html?" + Date.now();
+      }, 200);
+    } catch (error) {
+      console.error("Logout error:", error);
+      localStorage.clear();
+      sessionStorage.clear();
+      setTimeout(() => {
+        window.location.href = "Auth/LoginPage.html?" + Date.now();
+      }, 200);
+    }
   }
 
   const logoutBtn = document.getElementById("logoutBtn");
@@ -448,4 +462,18 @@ window.addEventListener('load', async () => {
       console.error("Session check failed:", err);
     }
   }
+});
+
+document.addEventListener("DOMContentLoaded", () => {
+  const emailInput = document.getElementById("email");
+  const passwordInput = document.getElementById("password");
+
+  if (emailInput) emailInput.disabled = false;
+  if (passwordInput) passwordInput.disabled = false;
+
+  // 👇 Refocus automatically after load (fixes the need to alt+tab)
+  setTimeout(() => {
+    if (emailInput) emailInput.focus();
+    window.focus(); // force window regain focus (important in Electron)
+  }, 300);
 });

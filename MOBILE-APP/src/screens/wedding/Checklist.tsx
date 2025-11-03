@@ -12,6 +12,7 @@ import { faCheck } from "@fortawesome/free-solid-svg-icons";
 
 import NavigationSlider from './ReusableComponents/NavigationSlider';
 import MenuBar from "./ReusableComponents/MenuBar";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
 const ProgressBar = ({ progress }: { progress: number }) => {
   return (
@@ -22,15 +23,9 @@ const ProgressBar = ({ progress }: { progress: number }) => {
  };
 
 const Checklist  = () => {
-
   const [inputValue, setInputValue] = useState('');
   const [modalVisible, setModalVisible] = React.useState(false);
   
-  const handleSaveAndClose = () => {
-    handleSave();
-    setModalVisible(false);
-  };
-
   type ChecklistItem = {
     id: string;
     name: string;
@@ -49,6 +44,42 @@ const Checklist  = () => {
     { id: "checklist5", name: "Set a wedding date", checked: false },
     { id: "checklist6", name: "Set a wedding time", checked: false },
   ]);
+
+  // Load checklist from AsyncStorage on component mount
+  useEffect(() => {
+    loadChecklist();
+  }, []);
+
+  // Save checklist to AsyncStorage whenever checklistItems changes
+  useEffect(() => {
+    saveChecklist();
+  }, [checklistItems]);
+
+  const handleSaveAndClose = () => {
+    handleSave();
+    setModalVisible(false);
+  };
+
+  // Load checklist from AsyncStorage
+  const loadChecklist = async () => {
+    try {
+      const savedChecklist = await AsyncStorage.getItem('checklistItems');
+      if (savedChecklist !== null) {
+        setChecklistItems(JSON.parse(savedChecklist));
+      }
+    } catch (error) {
+      console.error('Error loading checklist:', error);
+    }
+  };
+
+  // Save checklist to AsyncStorage
+  const saveChecklist = async () => {
+    try {
+      await AsyncStorage.setItem('checklistItems', JSON.stringify(checklistItems));
+    } catch (error) {
+      console.error('Error saving checklist:', error);
+    }
+  };
 
   const toggleCheckbox = (id: string) => {
     setChecklistItems(prev => 
@@ -71,13 +102,12 @@ const Checklist  = () => {
     }
   };
 
-  // const [progress, setProgress] = useState(0);
-  
-  // useEffect(() => {
-  //   const checkedCount = Object.values(checkboxes).filter(checked => checked).length;
-  //   const total = Object.keys(checkboxes).length;
-  //   setProgress((checkedCount / total) * 100);
-  // }, [checkboxes]);
+  // Calculate progress for progress bar
+  const calculateProgress = () => {
+    if (checklistItems.length === 0) return 0;
+    const checkedItems = checklistItems.filter(item => item.checked).length;
+    return (checkedItems / checklistItems.length) * 100;
+  };
 
   return (
     <SafeAreaProvider>
@@ -92,6 +122,14 @@ const Checklist  = () => {
           {/* ===== CONTENT ===== */}
           <View style={styles.checkListHeader}>
             <Text style={styles.checkListHeaderText}>My task</Text>
+          </View>
+
+          {/* Progress Bar */}
+          <View style={styles.progressContainer}>
+            <Text style={styles.progressText}>
+              {checklistItems.filter(item => item.checked).length} of {checklistItems.length} tasks completed
+            </Text>
+            <ProgressBar progress={calculateProgress()} />
           </View>
 
           {/* CHECKLIST */}
@@ -126,9 +164,7 @@ const Checklist  = () => {
           <View style={styles.buttonContainer}>
             <TouchableOpacity 
               style={styles.button} 
-              onPress={() => 
-                setModalVisible(true)
-              }
+              onPress={() => setModalVisible(true)}
             >
               <Text style={styles.buttonText}>+</Text>
             </TouchableOpacity>
@@ -162,6 +198,7 @@ const Checklist  = () => {
                               value={inputValue}
                               onChangeText={setInputValue}
                               placeholder="e.g., Invite the guests"
+                              placeholderTextColor="#999"
                           />
                       </View>
                       <View style={styles.saveButtonContainer}>
@@ -209,10 +246,14 @@ const styles = StyleSheet.create({
       alignSelf: "center",
    },
 
+   progressContainer: {
+     marginTop: hp("1%"),
+     marginHorizontal: wp("6%"),
+   },
+
    progressBarContainer: {
-      width: wp("80%"),
+      width: "100%",
       height: hp("1.5%"),
-      alignSelf: "center",
       marginTop: hp("0.8%"),  
       borderRadius: wp("5%"),
       backgroundColor: colors.border,
@@ -226,8 +267,8 @@ const styles = StyleSheet.create({
 
    progressText: {
       color: colors.black,
-      marginTop: hp("0.8%"),
-      paddingHorizontal: wp("1.5%"),
+      fontSize: wp("3.5%"),
+      fontFamily: "Poppins",
    },
   
    checkListItemContainer: {
@@ -298,6 +339,7 @@ const styles = StyleSheet.create({
       fontSize: wp("7%"),
       textAlign: "center",    
       color: colors.white,
+      fontFamily: 'Poppins',
     },
 
     modalOverlay: {
@@ -324,6 +366,7 @@ const styles = StyleSheet.create({
 
     modalTitle: {
         fontSize: wp("4.5%"),
+        fontFamily: "Poppins",
     },
 
     closeButtonText: {
@@ -360,6 +403,7 @@ const styles = StyleSheet.create({
         borderRadius: 9,
         width: wp("76%"),
         marginTop: hp("1%"),
+        fontFamily: 'Poppins',
         paddingHorizontal: wp("3%"),
         borderColor: colors.borderv3,
     },
@@ -386,6 +430,7 @@ const styles = StyleSheet.create({
     saveButtonText: {
         textAlign: "center",
         color: colors.white,  
+        fontFamily: "Poppins",
     },
 });
 

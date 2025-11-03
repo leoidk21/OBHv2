@@ -7,13 +7,9 @@
 
   <link rel="stylesheet" href="../Auth/SignUp.css">
   <link rel="stylesheet" href="../../components/Sidebar.css">
-
-  <!-- Supabase SDK -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-
-  <!-- Initialize Supabase via preload config -->
   <script>
-    console.log("✅ Initializing Supabase client from preload config...");
+    console.log("Initializing Supabase client from preload config...");
 
     if (window.supabaseConfig && window.supabaseConfig.isConfigured) {
       const { createClient } = supabase;
@@ -21,16 +17,14 @@
         window.supabaseConfig.url,
         window.supabaseConfig.anonKey
       );
-      console.log("✅ Supabase client initialized successfully");
+      console.log("Supabase client initialized successfully");
     } else {
-      console.error("❌ Supabase config missing — check preload.js exposure");
+      console.error("Supabase config missing — check preload.js exposure");
       window.addEventListener("DOMContentLoaded", () => {
         alert("Error initializing Supabase. Please restart the app.");
       });
     }
   </script>
-
-  <!-- Auth handler -->
   <script src="../Auth/Auth.js"></script>
 </head>
 

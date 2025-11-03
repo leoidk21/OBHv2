@@ -44,12 +44,12 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
   // Get user data from EventContext
   const eventContext = useEvent();
   
-  // ✅ FIXED: Use the available userId which should be the UUID based on your logs
+  // FIXED: Use the available userId which should be the UUID based on your logs
   // Your logs show: "Setting up Supabase real-time for user: 132" 
   // But we need the UUID: "a1166d38-7714-4710-b410-7bd65bd597a0"
   const userUuid = eventContext.userId; // This should be the UUID
   
-  console.log('🎯 NotificationContext Debug:', {
+  console.log('NotificationContext Debug:', {
     userUuid: userUuid,
     hasUserId: !!eventContext.userId,
   });
@@ -57,11 +57,11 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
   // Fetch notifications
   const refreshNotifications = async () => {
     if (!userUuid) {
-      console.log('❌ No userUuid available for fetching notifications');
+      console.log('No userUuid available for fetching notifications');
       return;
     }
     
-    console.log('🔄 Fetching notifications for user UUID:', userUuid);
+    console.log('Fetching notifications for user UUID:', userUuid);
     setLoading(true);
     
     try {
@@ -72,13 +72,13 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
         .order('created_at', { ascending: false });
 
       if (error) {
-        console.error('❌ Error fetching notifications:', error);
+        console.error('Error fetching notifications:', error);
       } else {
-        console.log(`✅ Found ${data?.length || 0} notifications for UUID: ${userUuid}`);
+        console.log(`Found ${data?.length || 0} notifications for UUID: ${userUuid}`);
         setNotifications(data || []);
         
         const unread = data?.filter(notification => !notification.is_read).length || 0;
-        console.log(`🔴 Unread count: ${unread}`);
+        console.log(`Unread count: ${unread}`);
         setUnreadCount(unread);
       }
     } catch (error) {
@@ -91,11 +91,11 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
   // Setup real-time subscription with UUID
   useEffect(() => {
     if (!userUuid) {
-      console.log('❌ No userUuid for real-time subscription');
+      console.log('No userUuid for real-time subscription');
       return;
     }
 
-    console.log('🎯 Setting up real-time for user UUID:', userUuid);
+    console.log('Setting up real-time for user UUID:', userUuid);
     refreshNotifications(); // Initial fetch
 
     // Clean up existing subscription
@@ -114,14 +114,14 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
           filter: `user_uuid=eq.${userUuid}`,
         },
         (payload) => {
-          console.log('📢 REAL-TIME UPDATE:', payload.eventType, payload.new);
+          console.log('REAL-TIME UPDATE:', payload.eventType, payload.new);
           
           if (payload.eventType === 'INSERT') {
             const newNotification = payload.new as Notification;
             setNotifications(prev => {
               const exists = prev.some(n => n.id === newNotification.id);
               if (exists) return prev;
-              console.log('🆕 New notification received:', newNotification);
+              console.log('New notification received:', newNotification);
               return [newNotification, ...prev];
             });
             

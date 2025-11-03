@@ -48,6 +48,9 @@ const Home = () => {
       const [showReminderModal, setShowReminderModal] = useState(false);
       const [ hasShownReminder, setHasShownReminder ] = useState(false);
 
+      const [showCompletionModal, setShowCompletionModal] = useState(false);
+      const [hasShownCompletion, setHasShownCompletion] = useState(false);
+
       const isScheduleComplete = !!eventData.event_date;
       const isGuestComplete = !!eventData.guest_range;
       const isBudgetComplete = !!eventData.package_price || !!(eventData.budget && eventData.budget.length > 0);
@@ -115,6 +118,36 @@ const Home = () => {
     checkEventReminder();
       }, [eventData.event_date, hasShownReminder]);
 
+      // CHECK IF EVENT IS COMPLETED
+      useEffect(() => {
+         const checkEventCompletion = async () => {
+            if (!eventData.event_date) return;
+
+            // Check if we've already shown the completion modal for this event
+            const completionShownKey = `completion_shown_${eventData.event_date}`;
+            const hasShown = await SecureStore.getItemAsync(completionShownKey);
+            
+            if (hasShown === 'true') {
+               setHasShownCompletion(true);
+               return;
+            }
+
+            const now = new Date().getTime();
+            const eventTime = new Date(eventData.event_date).getTime();
+            const difference = eventTime - now;
+            
+            // If event time has passed (difference is negative)
+            if (difference <= 0 && !hasShownCompletion) {
+               setShowCompletionModal(true);
+               // Mark completion modal as shown for this event
+               await SecureStore.setItemAsync(completionShownKey, 'true');
+               setHasShownCompletion(true);
+            }
+         };
+
+         checkEventCompletion();
+      }, [eventData.event_date, hasShownCompletion]);
+
       // CLOSE REMINDER MODAL
       const handleCloseReminder = () => {
          setShowReminderModal(false);
@@ -126,6 +159,16 @@ const Home = () => {
          navigation.navigate("Event" as never);
       };
       // REMINDERS MODAL ONE DAY BEFORE EVENTS
+
+      const handleCloseCompletion = () => {
+         setShowCompletionModal(false);
+      };
+
+      // NAVIGATE TO EVENT DETAILS FROM COMPLETION MODAL
+      const handleViewEventMemories = () => {
+         setShowCompletionModal(false);
+         navigation.navigate("Event" as never);
+      };
 
       const [countdown, setCountdown] = useState({ days: 0, hours: 0, minutes: 0, seconds: 0 });
 
@@ -246,6 +289,64 @@ const Home = () => {
                      </View>
                   </View>
                </View>
+               </Modal>
+
+               {/* COMPLETION MODAL */}
+               <Modal
+                  visible={showCompletionModal}
+                  onRequestClose={handleCloseCompletion}
+                  animationType="fade"
+                  transparent={true}
+               >
+                  <View style={styles.completionModalOverlay}>
+                     <View style={styles.completionModalContent}>
+                        {/* Celebration Confetti Effect */}
+                        <View style={styles.confettiContainer}>
+                           <Ionicons name="sparkles" size={60} color="#FFD700" style={styles.confetti} />
+                           <Ionicons name="sparkles" size={45} color="#FF6B6B" style={[styles.confetti, styles.confetti2]} />
+                           <Ionicons name="sparkles" size={50} color="#4ECDC4" style={[styles.confetti, styles.confetti3]} />
+                        </View>
+                        
+                        <View style={styles.completionIcon}>
+                           <Ionicons name="trophy" size={80} color="#FFD700" />
+                        </View>
+                        
+                        <Text style={styles.completionTitle}>Congratulations! 🎉</Text>
+                        
+                        <Text style={styles.completionMessage}>
+                           Your {eventData.wedding_type || 'event'} has been successfully completed!
+                        </Text>
+                        
+                        <View style={styles.completionEventDetails}>
+                           <Text style={styles.completionNames}>
+                              {eventData.client_name || 'Not set'} & {eventData.partner_name || 'Not set'}
+                           </Text>
+                           <Text style={styles.completionDate}>
+                              {formatEventDate(eventData.event_date)}
+                           </Text>
+                        </View>
+                        
+                        <Text style={styles.completionSubtext}>
+                           We hope it was everything you dreamed of and more!
+                        </Text>
+                        
+                        <View style={styles.completionButtons}>
+                           <TouchableOpacity
+                              style={[styles.completionButton, styles.completionSecondaryButton]}
+                              onPress={handleCloseCompletion}
+                           >
+                              <Text style={styles.completionSecondaryText}>Close</Text>
+                           </TouchableOpacity>
+                        
+                           <TouchableOpacity
+                              style={[styles.completionButton, styles.completionPrimaryButton]}
+                              onPress={handleViewEventMemories}
+                           >
+                              <Text style={styles.completionPrimaryText}>View Memories</Text>
+                           </TouchableOpacity>
+                        </View>
+                     </View>
+                  </View>
                </Modal>
 
                <ScrollView
@@ -411,9 +512,8 @@ const Home = () => {
                            )}
                            </View>
                            <View style={styles.screenItem}>
-                              <Text style={styles.screenItemText}>Total Budget</Text>
                               <Text style={styles.screenItemText}>
-                                 {eventData.package_price ? `${eventData.package_price}` : 'Not set'}
+                                 View Budget
                               </Text>
                            </View>
                         </TouchableOpacity>
@@ -434,7 +534,7 @@ const Home = () => {
                            </View>
                            <View style={styles.screenItem}>
                               <Text style={styles.screenItemText}>
-                                 {isSignatureComplete ? 'Signed' : 'Not signed'}
+                                 View E-Signature
                               </Text>
                            </View>
                         </TouchableOpacity>
@@ -1052,6 +1152,147 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     fontSize: 16,
   },
+
+  completionModalOverlay: {
+      flex: 1,
+      backgroundColor: 'rgba(0,0,0,0.7)',
+      justifyContent: 'center',
+      alignItems: 'center',
+      padding: 20,
+   },
+   completionModalContent: {
+      backgroundColor: 'white',
+      borderRadius: 20,
+      padding: 30,
+      alignItems: 'center',
+      shadowColor: '#000',
+      shadowOffset: {
+         width: 0,
+         height: 10,
+   },
+      shadowOpacity: 0.3,
+      shadowRadius: 20,
+      elevation: 10,
+      width: '100%',
+   },
+   
+   confettiContainer: {
+      position: 'absolute',
+      top: -30,
+      width: '100%',
+      height: 100,
+      alignItems: 'center',
+   },
+
+   confetti: {
+      position: 'absolute',
+      opacity: 0.8,
+   },
+
+   confetti2: {
+      top: 20,
+      left: 30,
+      transform: [{ rotate: '45deg' }],
+   },
+
+   confetti3: {
+      top: 10,
+      right: 40,
+      transform: [{ rotate: '-30deg' }],
+   },
+
+   completionIcon: {
+      marginBottom: 20,
+      marginTop: 20,
+   },
+
+   completionTitle: {
+      fontSize: 28,
+      fontFamily: 'Poppins',
+      fontWeight: 'bold',
+      color: '#102E50',
+      textAlign: 'center',
+      marginBottom: 15,
+   },
+
+   completionMessage: {
+      fontSize: 18,
+      fontFamily: 'Poppins',
+      color: '#333',
+      textAlign: 'center',
+      marginBottom: 20,
+      lineHeight: 24,
+   },
+
+   completionEventDetails: {
+      backgroundColor: '#f8f9fa',
+      padding: 15,
+      borderRadius: 10,
+      marginBottom: 15,
+      width: '100%',
+      alignItems: 'center',
+   },
+
+   completionNames: {
+      fontSize: 16,
+      fontFamily: 'Poppins',
+      fontWeight: '600',
+      color: '#102E50',
+      marginBottom: 5,
+   },
+
+   completionDate: {
+      fontSize: 14,
+      fontFamily: 'Poppins',
+      color: '#666',
+   },
+
+   completionSubtext: {
+      fontSize: 14,
+      fontFamily: 'Poppins',
+      color: '#888',
+      textAlign: 'center',
+      marginBottom: 25,
+      fontStyle: 'italic',
+   },
+
+   completionButtons: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      width: '100%',
+      gap: 10,
+   },
+
+   completionButton: {
+      flex: 1,
+      paddingVertical: 12,
+      borderRadius: 10,
+      alignItems: 'center',
+   },
+
+   completionPrimaryButton: {
+      backgroundColor: '#102E50',
+   },
+
+   completionSecondaryButton: {
+      backgroundColor: '#f8f9fa',
+      borderWidth: 1,
+      borderColor: '#dee2e6',
+   },
+
+   completionPrimaryText: {
+      color: 'white',
+      fontFamily: 'Poppins',
+      fontWeight: '600',
+      fontSize: 16,
+   },
+
+   completionSecondaryText: {
+      color: '#666',
+      fontFamily: 'Poppins',
+      fontWeight: '600',
+      fontSize: 16,
+   },
 
 });
 
