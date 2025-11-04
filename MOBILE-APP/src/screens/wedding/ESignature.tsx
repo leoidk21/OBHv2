@@ -21,64 +21,63 @@ const ESignature  = () => {
     getEventSummary,
   } = useEvent();
 
-//   useEffect(() => {
-//     console.log('Event Data Structure:', JSON.stringify(eventData, null, 2));
-//   }, [eventData]);
-
   const ref = useRef<any>(null);
   const [signature, setSignature] = useState<string | null>(null);
   const [showSubmissionModal, setShowSubmissionModal] = useState(false);
+  const [showValidationModal, setShowValidationModal] = useState(false);
+  const [validationErrors, setValidationErrors] = useState<string[]>([]);
   const navigation: NavigationProp<ParamListBase> = useNavigation();
   const [loading, setLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
 
   // Step 1: Handle signature capture
-    const handleSaveSignature = async () => {
+  const handleSaveSignature = async () => {
     try {
-        setLoading(true);
-
-        // Wait for the signature to be captured and saved
-        await ref.current.readSignature(); // make sure readSignature returns a Promise
-
-        // Optionally, you can call your API here to save the signature
-        // await saveSignatureToServer(signature);
-
+      setLoading(true);
+      await ref.current.readSignature();
     } catch (error) {
-        console.error("Failed to save signature:", error);
+      console.error("Failed to save signature:", error);
     } finally {
-        setLoading(false);
+      setLoading(false);
     }
-    };
+  };
 
   // Step 2: When signature is captured
   const handleOK = (signatureData: string) => {
-    // Save signature to context
-    updateEvent('eSignature', signatureData);
-    setSignature(signatureData);
+    const errors = validateEventData();
     
-    // Show the submission review modal
-    setShowSubmissionModal(true);
+    if (errors.length > 0) {
+      // Show validation errors instead of submission modal
+      setValidationErrors(errors);
+      setShowValidationModal(true);
+      // Clear the signature since we can't proceed
+      ref.current.clearSignature();
+      setSignature(null);
+      updateEvent('eSignature', null);
+    } else {
+      // All validations passed, proceed with signature
+      updateEvent('eSignature', signatureData);
+      setSignature(signatureData);
+      setShowSubmissionModal(true);
+    }
   };
 
-  // Step 3: Handle final submission
-    const handleConfirmSubmission = async () => {
-    // Prevent multiple clicks
-        if (submitting) return;
+  const handleConfirmSubmission = async () => {
+    if (submitting) return;
 
-        setSubmitting(true);
-        try {
-            await submitEventToDesktop();
-            Alert.alert('Success', 'Event submitted successfully!');
-            setShowSubmissionModal(false);
-            navigation.navigate('Event' as never);
-        } catch (error) {
-            Alert.alert('Error', 'Failed to submit event. Please try again.');
-        } finally {
-            setSubmitting(false);
-        }
-    };
+    setSubmitting(true);
+    try {
+      await submitEventToDesktop();
+      Alert.alert('Success', 'Event submitted successfully!');
+      setShowSubmissionModal(false);
+      navigation.navigate('Event' as never);
+    } catch (error) {
+      Alert.alert('Error', 'Failed to submit event. Please try again.');
+    } finally {
+      setSubmitting(false);
+    }
+  };
 
-  // Step 4: Clear signature
   const handleClear = () => {
     ref.current.clearSignature();
     setSignature(null);
@@ -90,36 +89,44 @@ const ESignature  = () => {
 
     // Check Part 1 - Basic Event Details (REQUIRED)
     if (!eventData.event_type) {
-        errors.push('• Event type is required');
+      errors.push('• Event type is required');
     }
     if (!eventData.event_date) {
-        errors.push('• Event date is required');
+      errors.push('• Event date is required');
     }
     if (!eventData.guest_range) {
-        errors.push('• Guest count/range is required');
+      errors.push('• Guest count/range is required');
     }
     if (!eventData.client_name && !eventData.full_client_name) {
-        errors.push('• Client name is required');
-    }
-    if (!eventData.client_email) {
-        errors.push('• Client email is required');
+      errors.push('• Client name is required');
     }
     
     // Check Part 2 - Detailed Planning (REQUIRED for submission)
     if (!eventData.schedule || eventData.schedule.length === 0) {
-        errors.push('• At least one schedule segment is required');
+      errors.push('• At least one schedule segment is required');
     }
     if (!eventData.guests || eventData.guests.length === 0) {
-        errors.push('• At least one guest is required');
+      errors.push('• At least one guest is required');
     }
     if (!eventData.budget || eventData.budget.length === 0) {
-        errors.push('• At least one budget expense is required');
-    }
-    if (!eventData.venue?.name) {
-        errors.push('• Venue is required');
-    }
-        return errors;
+      errors.push('• At least one budget expense is required');
+    }   
+
+    return errors;
   };
+
+  const getMissingFieldsCount = () => {
+    const errors = validateEventData();
+    return errors.length;
+  };
+
+  useEffect(() => {
+    // Optional: You can show a warning when the component loads
+    const missingCount = getMissingFieldsCount();
+    if (missingCount > 0) {
+      console.log(`Missing ${missingCount} required fields`);
+    }
+  }, []);
 
   return (
     <SafeAreaProvider>
@@ -127,145 +134,173 @@ const ESignature  = () => {
         <LinearGradient colors={["#FFFFFF", "#f2e8e2ff"]} style={{ flex: 1 }}>
           {/* HEADER */}
           <View>
-              <NavigationSlider headerTitle="ESignature" />
+            <NavigationSlider headerTitle="ESignature" />
           </View>
           {/* HEADER */}
 
           <View style={styles.introContainer}>
             <Text style={styles.introText}>
-                Please sign below to confirm and authorize this agreement.
+              Please sign below to confirm and authorize this agreement.
             </Text>
+            {/* Show warning if there are missing fields */}
+            {getMissingFieldsCount() > 0 && (
+              <View style={styles.warningContainer}>
+                <Text style={styles.warningText}>
+                  ⚠️ {getMissingFieldsCount()} required field(s) missing. Please complete all sections before signing.
+                </Text>
+              </View>
+            )}
           </View>
 
           {/* CONTENT */}
           <View style={styles.previewContainer}>
             {/* SIGNATURE PAD */}
             <SignatureScreen
-                ref={ref}
-                onOK={handleOK}
-                autoClear={true}
-                descriptionText="Sign here"
-                backgroundColor="#fff"
-                penColor="black"
-                webStyle={`
-                    .m-signature-pad {
-                        box-shadow: none;
-                    }
-                    .m-signature-pad--body {
-                        border-radius: 12px;
-                    }
-                    .m-signature-pad--footer {
-                        display: none;
-                    }
-                    canvas {
-                        background-color: #fff;
-                        border-radius: 12px;
-                    }
-                `}
+              ref={ref}
+              onOK={handleOK}
+              autoClear={true}
+              descriptionText="Sign here"
+              backgroundColor="#fff"
+              penColor="black"
+              webStyle={`
+                .m-signature-pad {
+                  box-shadow: none;
+                }
+                .m-signature-pad--body {
+                  border-radius: 12px;
+                }
+                .m-signature-pad--footer {
+                  display: none;
+                }
+                canvas {
+                  background-color: #fff;
+                  border-radius: 12px;
+                }
+              `}
             />
+          </View>
+
+          <View style={styles.buttonRow}>
+            <View>
+              <TouchableOpacity
+                onPress={handleClear}
+                style={styles.clearButton}       
+              >
+                <Text style={styles.clearText}>Clear</Text>
+              </TouchableOpacity>
             </View>
 
-            <View style={styles.buttonRow}>
-                <View>
-                    <TouchableOpacity
-                        onPress={handleClear}
-                        style={styles.clearButton}       
-                    >
-                        <Text style={styles.clearText}>Clear</Text>
-                    </TouchableOpacity>
-                </View>
-
-                <View>
-                    <TouchableOpacity
-                        onPress={handleSaveSignature}
-                        style={[styles.confirmButton, loading && styles.disabledButton]}
-                        disabled={!!loading}
-                    >
-                        <Text style={[styles.saveText]}>
-                            {loading ? 'Saving...' : 'Save'}
-                        </Text>
-                    </TouchableOpacity>
-                </View>
-
-                {/* SUBMISSION REVIEW MODAL */}
-                <Modal visible={showSubmissionModal} transparent animationType="slide">
-                    <View style={styles.modalOverlay}>
-                        <View style={styles.submissionModal}>
-                            <Text style={styles.modalTitle}>Review & Submit Event</Text>
-                            <Text style={styles.reviewText}>Please review the following information:</Text>
-                            
-                            <ScrollView style={styles.reviewContainer}>
-                                {/* Part 1: Basic Event Info */}
-                                <View style={styles.section}>
-                                    <Text style={styles.sectionTitle}>Event Details</Text>
-                                    <Text style={styles.segmentName}>Event Type: {eventData.event_type || 'Not set'}</Text>
-                                    <Text style={styles.segmentName}>Wedding Type: {eventData.wedding_type || 'Not set'}</Text>
-                                    <Text style={styles.segmentName}>Client Name: {eventData.full_client_name || eventData.client_name || 'Not set'}</Text>
-                                    <Text style={styles.segmentName}>Event Date: {eventData.event_date || 'Not set'}</Text>
-                                    <Text style={styles.segmentName}>Packages: {eventData.guest_range || 'Not set'} Pax</Text>
-                                    <Text style={styles.segmentName}>Price: {eventData.package_price || 'Not set'}</Text>
-                                </View>
-
-                                {/* Part 2: Schedule */}
-                                <View style={styles.section}>
-                                    <Text style={styles.sectionTitle}>Schedule ({eventData.schedule?.length || 0} segments)</Text>
-                                    {eventData.schedule?.map((segment: any, index: number) => (
-                                    <View key={index} style={styles.segmentItem}>
-                                        <Text style={styles.segmentName}>{segment.name}</Text>
-                                        <Text style={styles.segmentTime}>{segment.startTime}</Text>
-                                        <Text style={styles.segmentTime}>{segment.endTime}</Text>
-                                        <Text style={styles.segmentNotes}>{segment.venue}</Text>
-                                    </View>
-                                    ))}
-                                    {(!eventData.schedule || eventData.schedule.length === 0) && (
-                                        <Text style={styles.missingField}>No schedule segments added</Text>
-                                    )}
-                                </View>
-
-                                {/* Part 3: Guests */}
-                                <View style={styles.section}>
-                                    <Text style={styles.sectionTitle}>Guests ({eventData.guests?.length || 0} total)</Text>
-                                    <Text style={styles.segmentName}>Accepted: {eventData.guests?.filter((g: any) => g.status === 'Accepted').length || 0}</Text>
-                                    <Text style={styles.segmentName}>Pending: {eventData.guests?.filter((g: any) => g.status === 'Pending').length || 0}</Text>
-                                    <Text style={styles.segmentName}>Declined: {eventData.guests?.filter((g: any) => g.status === 'Declined').length || 0}</Text>
-                                    {(!eventData.guests || eventData.guests.length === 0) && (
-                                        <Text style={styles.missingField}>No guests added</Text>
-                                    )}
-                                </View>
-
-                                {/* Part 4: Budget */}
-                                <View style={styles.section}>
-                                    <Text style={styles.sectionTitle}>Budget</Text>
-                                    <Text style={styles.segmentName}>Total Expenses: {eventData.budget?.length || 0}</Text>
-                                    <Text style={styles.segmentName}>Total Amount: ₱{eventData.budget?.reduce((sum: number, expense: any) => sum + expense.amount, 0) || 0}</Text>
-                                    {(!eventData.budget || eventData.budget.length === 0) && (
-                                        <Text style={styles.missingField}>No expenses added</Text>
-                                    )}
-                                </View>
-                            </ScrollView>
-
-                            <View style={styles.modalButtons}>
-                                <TouchableOpacity 
-                                    style={styles.cancelButton}
-                                    onPress={() => setShowSubmissionModal(false)}
-                                >
-                                    <Text style={styles.cancelButtonText}>Cancel</Text>
-                                </TouchableOpacity>
-                                <TouchableOpacity 
-                                    style={styles.submitButton}
-                                    onPress={handleConfirmSubmission}
-                                    disabled={submitting}
-                                >
-                                    <Text style={[styles.submitButtonText, submitting && styles.disabledText]}>
-                                        {submitting ? "Submitting..." : "Submit Event"}
-                                    </Text>
-                                </TouchableOpacity>
-                            </View>
-                        </View>
-                    </View>
-                </Modal>
+            <View>
+              <TouchableOpacity
+                onPress={handleSaveSignature}
+                style={[styles.confirmButton, loading && styles.disabledButton]}
+                disabled={!!loading}
+              >
+                <Text style={[styles.saveText]}>
+                  {loading ? 'Saving...' : 'Save'}
+                </Text>
+              </TouchableOpacity>
             </View>
-            
+          </View>
+
+          {/* VALIDATION ERROR MODAL */}
+          <Modal visible={showValidationModal} transparent animationType="slide">
+            <View style={styles.modalOverlay}>
+              <View style={styles.validationModal}>
+                <Text style={styles.validationTitle}>Missing Required Information</Text>
+                <Text style={styles.validationSubtitle}>
+                  Please complete the following fields before submitting:
+                </Text>
+                
+                <ScrollView style={styles.errorsContainer}>
+                  {validationErrors.map((error, index) => (
+                    <Text key={index} style={styles.errorText}>
+                      {error}
+                    </Text>
+                  ))}
+                </ScrollView>
+
+                <View style={styles.modalButtons}>
+                  <TouchableOpacity 
+                    style={styles.cancelButton}
+                    onPress={() => setShowValidationModal(false)}
+                  >
+                    <Text style={styles.cancelButtonText}>OK</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            </View>
+          </Modal>
+
+          {/* SUBMISSION REVIEW MODAL */}
+          <Modal visible={showSubmissionModal} transparent animationType="slide">
+            <View style={styles.modalOverlay}>
+              <View style={styles.submissionModal}>
+                <Text style={styles.modalTitle}>Review & Submit Event</Text>
+                <Text style={styles.reviewText}>All required information has been completed. Please review:</Text>
+                
+                <ScrollView style={styles.reviewContainer}>
+                  {/* Part 1: Basic Event Info */}
+                  <View style={styles.section}>
+                    <Text style={styles.sectionTitle}>Event Details</Text>
+                    <Text style={styles.segmentName}>Event Type: {eventData.event_type || 'Not set'}</Text>
+                    <Text style={styles.segmentName}>Wedding Type: {eventData.wedding_type || 'Not set'}</Text>
+                    <Text style={styles.segmentName}>Client Name: {eventData.full_client_name || eventData.client_name || 'Not set'}</Text>
+                    <Text style={styles.segmentName}>Event Date: {eventData.event_date || 'Not set'}</Text>
+                    <Text style={styles.segmentName}>Packages: {eventData.guest_range || 'Not set'} Pax</Text>
+                    <Text style={styles.segmentName}>Price: {eventData.package_price || 'Not set'}</Text>
+                  </View>
+
+                  {/* Part 2: Schedule */}
+                  <View style={styles.section}>
+                    <Text style={styles.sectionTitle}>Schedule ({eventData.schedule?.length || 0} segments)</Text>
+                    {eventData.schedule?.map((segment: any, index: number) => (
+                      <View key={index} style={styles.segmentItem}>
+                        <Text style={styles.segmentName}>{segment.name}</Text>
+                        <Text style={styles.segmentTime}>{segment.startTime}</Text>
+                        <Text style={styles.segmentTime}>{segment.endTime}</Text>
+                        <Text style={styles.segmentNotes}>{segment.venue}</Text>
+                      </View>
+                    ))}
+                  </View>
+
+                  {/* Part 3: Guests */}
+                  <View style={styles.section}>
+                    <Text style={styles.sectionTitle}>Guests ({eventData.guests?.length || 0} total)</Text>
+                    <Text style={styles.segmentName}>Accepted: {eventData.guests?.filter((g: any) => g.status === 'Accepted').length || 0}</Text>
+                    <Text style={styles.segmentName}>Pending: {eventData.guests?.filter((g: any) => g.status === 'Pending').length || 0}</Text>
+                    <Text style={styles.segmentName}>Declined: {eventData.guests?.filter((g: any) => g.status === 'Declined').length || 0}</Text>
+                  </View>
+
+                  {/* Part 4: Budget */}
+                  <View style={styles.section}>
+                    <Text style={styles.sectionTitle}>Budget</Text>
+                    <Text style={styles.segmentName}>Total Expenses: {eventData.budget?.length || 0}</Text>
+                    <Text style={styles.segmentName}>Total Amount: ₱{eventData.budget?.reduce((sum: number, expense: any) => sum + expense.amount, 0) || 0}</Text>
+                  </View>
+                </ScrollView>
+
+                <View style={styles.modalButtons}>
+                  <TouchableOpacity 
+                    style={styles.cancelButton}
+                    onPress={() => setShowSubmissionModal(false)}
+                  >
+                    <Text style={styles.cancelButtonText}>Cancel</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity 
+                    style={styles.submitButton}
+                    onPress={handleConfirmSubmission}
+                    disabled={submitting}
+                  >
+                    <Text style={[styles.submitButtonText, submitting && styles.disabledText]}>
+                      {submitting ? "Submitting..." : "Submit Event"}
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            </View>
+          </Modal>
+          
           {/* CONTENT */}
         </LinearGradient>
         {/* <View>
@@ -477,6 +512,59 @@ disabledButton: {
 
 disabledText: {
     opacity: 0.5,
+},
+
+warningContainer: {
+    marginTop: hp('1%'),
+    padding: wp('3%'),
+    backgroundColor: '#FFF3CD',
+    borderRadius: wp('2%'),
+    borderLeftWidth: 4,
+    borderLeftColor: '#FFC107',
+},
+
+warningText: {
+    fontSize: wp('3.5%'),
+    color: '#856404',
+    fontFamily: 'Poppins',
+},
+
+validationModal: {
+    backgroundColor: colors.white,
+    borderRadius: wp('4%'),
+    padding: wp('5%'),
+    margin: wp('5%'),
+    maxHeight: hp('60%'),
+    width: wp('90%'),
+},
+
+validationTitle: {
+    fontSize: wp('5%'),
+    fontFamily: 'Loviena',
+    textAlign: 'center',
+    marginBottom: hp('1%'),
+    color: '#D32F2F',
+},
+
+validationSubtitle: {
+    fontSize: wp('4%'),
+    fontFamily: 'Poppins',
+    textAlign: 'center',
+    marginBottom: hp('2%'),
+    color: colors.black,
+},
+
+errorsContainer: {
+    maxHeight: hp('30%'),
+    marginBottom: hp('2%'),
+},
+
+errorText: {
+    fontSize: wp('4%'),
+    fontFamily: 'Poppins',
+    color: '#D32F2F',
+    marginBottom: hp('1%'),
+    paddingLeft: wp('2%'),
 },
 });
 

@@ -1,7 +1,7 @@
-// NotificationContext.tsx - FIXED VERSION
+// NotificationContext.tsx - UPDATED VERSION
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { supabase } from '../lib/supabase';
-import { useEvent } from './EventContext';
+// REMOVE: import { useEvent } from './EventContext';
 
 interface Notification {
   id: number;
@@ -40,41 +40,66 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
   const [unreadCount, setUnreadCount] = useState(0);
   const [loading, setLoading] = useState(false);
   const [subscription, setSubscription] = useState<any>(null);
-  
-  // Get user data from EventContext
-  const eventContext = useEvent();
-  
-  // FIXED: Use the available userId which should be the UUID based on your logs
-  // Your logs show: "Setting up Supabase real-time for user: 132" 
-  // But we need the UUID: "a1166d38-7714-4710-b410-7bd65bd597a0"
-  const userUuid = eventContext.userId; // This should be the UUID
-  
-  console.log('NotificationContext Debug:', {
-    userUuid: userUuid,
-    hasUserId: !!eventContext.userId,
-  });
+  const [userUuid, setUserUuid] = useState<string | null>(null); // ✅ DIRECT STATE
 
-  // Fetch notifications
-  const refreshNotifications = async () => {
-    if (!userUuid) {
-      console.log('No userUuid available for fetching notifications');
-      return;
-    }
-    
-    console.log('Fetching notifications for user UUID:', userUuid);
+  // ✅ GET USER UUID DIRECTLY FROM SUPABASE
+  useEffect(() => {
+    const getCurrentUser = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session?.user) {
+        setUserUuid(session.user.id);
+        console.log('🎯 NotificationContext - Direct user UUID:', session.user.id);
+      } else {
+        setUserUuid(null);
+        console.log('🔒 NotificationContext - No user session');
+      }
+    };
+
+    getCurrentUser();
+  }, []);
+
+  // ✅ LISTEN FOR AUTH CHANGES
+  useEffect(() => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      async (event, session) => {
+        console.log('🔄 NotificationContext - Auth state changed:', event);
+        
+        if (session?.user) {
+          const newUserUuid = session.user.id;
+          setUserUuid(newUserUuid);
+          console.log('👤 NotificationContext - New user UUID:', newUserUuid);
+          
+          // Refresh notifications for new user
+          await refreshNotificationsWithUuid(newUserUuid);
+        } else {
+          // User signed out - clear everything
+          setUserUuid(null);
+          setNotifications([]);
+          setUnreadCount(0);
+          console.log('🔒 NotificationContext - User signed out, cleared data');
+        }
+      }
+    );
+
+    return () => subscription.unsubscribe();
+  }, []);
+
+  // ✅ SEPARATE FUNCTION FOR REFRESHING WITH UUID
+  const refreshNotificationsWithUuid = async (uuid: string) => {
+    console.log('Fetching notifications for user UUID:', uuid);
     setLoading(true);
     
     try {
       const { data, error } = await supabase
         .from('notifications')
         .select('*')
-        .eq('user_uuid', userUuid)
+        .eq('user_uuid', uuid)
         .order('created_at', { ascending: false });
 
       if (error) {
         console.error('Error fetching notifications:', error);
       } else {
-        console.log(`Found ${data?.length || 0} notifications for UUID: ${userUuid}`);
+        console.log(`Found ${data?.length || 0} notifications for UUID: ${uuid}`);
         setNotifications(data || []);
         
         const unread = data?.filter(notification => !notification.is_read).length || 0;
@@ -88,18 +113,34 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
     }
   };
 
-  // Setup real-time subscription with UUID
+  // ✅ MAIN REFRESH FUNCTION
+  const refreshNotifications = async () => {
+    if (!userUuid) {
+      console.log('No userUuid available for fetching notifications');
+      return;
+    }
+    await refreshNotificationsWithUuid(userUuid);
+  };
+
+  // ✅ REAL-TIME SUBSCRIPTION
   useEffect(() => {
     if (!userUuid) {
       console.log('No userUuid for real-time subscription');
+      
+      // Clean up existing subscription if user logs out
+      if (subscription) {
+        subscription.unsubscribe();
+        setSubscription(null);
+      }
       return;
     }
 
-    console.log('Setting up real-time for user UUID:', userUuid);
+    console.log('🎯 Setting up real-time for user UUID:', userUuid);
     refreshNotifications(); // Initial fetch
 
     // Clean up existing subscription
     if (subscription) {
+      console.log('🧹 Cleaning up old subscription');
       subscription.unsubscribe();
     }
 
@@ -114,7 +155,7 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
           filter: `user_uuid=eq.${userUuid}`,
         },
         (payload) => {
-          console.log('REAL-TIME UPDATE:', payload.eventType, payload.new);
+          console.log('🔔 REAL-TIME UPDATE:', payload.eventType);
           
           if (payload.eventType === 'INSERT') {
             const newNotification = payload.new as Notification;
@@ -140,10 +181,7 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
             );
             
             // Recalculate unread count
-            const updatedUnreadCount = notifications
-              .map(n => n.id === updatedNotification.id ? updatedNotification : n)
-              .filter(n => !n.is_read).length;
-            setUnreadCount(updatedUnreadCount);
+            refreshNotifications();
           }
         }
       )
@@ -151,6 +189,8 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
         console.log('🔔 Supabase subscription status:', status);
         if (status === 'SUBSCRIBED') {
           console.log('✅ Successfully subscribed to real-time notifications for UUID:', userUuid);
+        } else if (status === 'CHANNEL_ERROR') {
+          console.error('❌ Channel error in real-time subscription');
         }
       });
 
@@ -160,9 +200,9 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
       console.log('🧹 Cleaning up subscription for UUID:', userUuid);
       newSubscription.unsubscribe();
     };
-  }, [userUuid]);
+  }, [userUuid]); // ✅ Only depend on userUuid
 
-  // Mark as read
+  // ✅ MARK AS READ
   const markAsRead = async (id: number) => {
     if (!userUuid) return;
     
@@ -193,7 +233,7 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
     }
   };
 
-  // Mark all as read
+  // ✅ MARK ALL AS READ
   const markAllAsRead = async () => {
     if (!userUuid) return;
     
@@ -223,6 +263,12 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
       console.error('Error marking all notifications as read:', error);
     }
   };
+
+  console.log('🎯 NotificationContext Debug:', {
+    userUuid: userUuid,
+    notificationsCount: notifications.length,
+    unreadCount: unreadCount
+  });
 
   return (
     <NotificationContext.Provider value={{

@@ -27,8 +27,8 @@ interface Guest {
   name: string;
   status: string;
   inviteLink: string;
-  guest_name?: string; // Add this for database compatibility
-  invite_link?: string; // Add this for database compatibility
+  guest_name?: string;
+  invite_link?: string;
 }
 
 interface Expense {
@@ -41,6 +41,7 @@ interface Expense {
 
 interface EventContextType {
     userId: string | null;
+    mobileUserId: number | null;
     eventData: Record<string, any>;
     updateEvent: (key: string, value: any) => Promise<void>;
     saveEventToBackend: () => Promise<void>;
@@ -163,44 +164,45 @@ export const EventProvider: React.FC<EventProviderProps> = ({ children }) => {
   const [isInitialized, setIsInitialized] = useState(false);
   const [eventStatus, setEventStatus] = useState<string>('Pending');
   const [isLoading, setIsLoading] = useState(false);
-  const [currentUserId, setCurrentUserId] = useState<string | null>(null); // NEW: Track current user
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+  const [mobileUserId, setMobileUserId] = useState<number | null>(null);
 
   const dataVersion = useRef(0);
 
   // GET CURRENT EVENT ID
   const validateUserSession = async (): Promise<{userId: string, token: string} | null> => {
     try {
-      console.log('🔍 Checking Supabase auth session...');
+      console.log('Checking Supabase auth session...');
       
-      // ✅ Get the current session from Supabase
+      // Get the current session from Supabase
       const { data: { session }, error: sessionError } = await supabase.auth.getSession();
       
       if (sessionError) {
-        console.error('❌ Supabase session error:', sessionError);
+        console.error('Supabase session error:', sessionError);
         return null; // Explicit return
       }
       
       if (!session) {
-        console.log('❌ No Supabase session found');
+        console.log('No Supabase session found');
         return null; // Explicit return
       }
       
-      console.log('✅ Supabase session found:', {
+      console.log('Supabase session found:', {
         userId: session.user?.id,
         email: session.user?.email,
         expiresAt: session.expires_at
       });
       
-      // ✅ Get the token from SecureStore for backup
+      // Get the token from SecureStore for backup
       const storedToken = await SecureStore.getItemAsync("userToken");
       const storedUserId = await SecureStore.getItemAsync("userId");
       
-      console.log('📦 Stored credentials:', {
+      console.log('Stored credentials:', {
         storedUserId: storedUserId,
         storedToken: storedToken ? 'exists' : 'missing'
       });
       
-      // ✅ Use the session user ID (this should be the UUID)
+      // Use the session user ID (this should be the UUID)
       if (session.user) {
         return { 
           userId: session.user.id, 
@@ -208,18 +210,18 @@ export const EventProvider: React.FC<EventProviderProps> = ({ children }) => {
         }; // Explicit return
       }
       
-      // ✅ Explicit return null if no user found
+      // Explicit return null if no user found
       return null;
       
     } catch (error) {
-      console.error('❌ Session validation failed:', error);
+      console.error('Session validation failed:', error);
       return null; // Explicit return
     }
   };
 
   const generateInviteLink = async (guestId: string, guestName: string): Promise<string> => {
     try {
-      console.log('🔗 Generating invite link for:', { guestId, guestName });
+      console.log('Generating invite link for:', { guestId, guestName });
       
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error("Not authenticated");
@@ -228,7 +230,7 @@ export const EventProvider: React.FC<EventProviderProps> = ({ children }) => {
       const { data: events, error: eventsError } = await supabase
         .from('event_plans')
         .select('id, client_name, event_date')
-        .eq('user_uuid', user.id)
+        .or(`user_uuid.eq.${user.id},auth_uid.eq.${user.id}`)
         .order('created_at', { ascending: false })
         .limit(1);
 
@@ -244,7 +246,7 @@ export const EventProvider: React.FC<EventProviderProps> = ({ children }) => {
       // Generate the invite link using the frontend URL
       const inviteLink = `https://wedding-invites-six.vercel.app/invite/${event.id}/${guestId}/${inviteToken}`;
       
-      console.log('🔗 Generated invite link:', inviteLink);
+      console.log('Generated invite link:', inviteLink);
       
       // Try multiple ways to find the guest
       let guestData;
@@ -259,7 +261,7 @@ export const EventProvider: React.FC<EventProviderProps> = ({ children }) => {
 
       if (!mobileError && guestByMobileId) {
         guestData = guestByMobileId;
-        console.log('✅ Found guest by mobile_guest_id');
+        console.log('Found guest by mobile_guest_id');
       } else {
         // Second try: Find by numeric ID (if guestId is a number)
         const numericGuestId = parseInt(guestId);
@@ -273,7 +275,7 @@ export const EventProvider: React.FC<EventProviderProps> = ({ children }) => {
 
           if (!idError && guestById) {
             guestData = guestById;
-            console.log('✅ Found guest by numeric ID');
+            console.log('Found guest by numeric ID');
           }
         }
         
@@ -288,13 +290,13 @@ export const EventProvider: React.FC<EventProviderProps> = ({ children }) => {
 
           if (!nameError && guestByName) {
             guestData = guestByName;
-            console.log('✅ Found guest by name');
+            console.log('Found guest by name');
           }
         }
       }
 
       if (!guestData) {
-        console.error('❌ Guest not found in database. Available guests:');
+        console.error('Guest not found in database. Available guests:');
         
         // Debug: List all guests for this event
         const { data: allGuests, error: listError } = await supabase
@@ -303,7 +305,7 @@ export const EventProvider: React.FC<EventProviderProps> = ({ children }) => {
           .eq('event_plan_id', event.id);
 
         if (!listError && allGuests) {
-          console.log('📋 All guests for event:', allGuests);
+          console.log('All guests for event:', allGuests);
         }
         
         throw new Error(`Guest "${guestName}" not found in database for event ${event.id}`);
@@ -320,11 +322,11 @@ export const EventProvider: React.FC<EventProviderProps> = ({ children }) => {
         .eq('id', guestData.id); // Use the numeric database ID
 
       if (updateError) {
-        console.error('❌ Error updating guest with invite link:', updateError);
+        console.error('Error updating guest with invite link:', updateError);
         throw updateError;
       }
 
-      console.log('✅ Guest updated successfully');
+      console.log('Guest updated successfully');
 
       // Verify what was actually saved
       const { data: verifiedGuest, error: verifyError } = await supabase
@@ -333,15 +335,15 @@ export const EventProvider: React.FC<EventProviderProps> = ({ children }) => {
         .eq('id', guestData.id)
         .single();
 
-      console.log('✅ VERIFIED GUEST DATA IN DATABASE:', verifiedGuest);
-      console.log('🔗 EXPECTED URL:', inviteLink);
-      console.log('🔗 ACTUAL TOKEN IN DB:', verifiedGuest?.invite_token);
+      console.log('VERIFIED GUEST DATA IN DATABASE:', verifiedGuest);
+      console.log('EXPECTED URL:', inviteLink);
+      console.log('ACTUAL TOKEN IN DB:', verifiedGuest?.invite_token);
 
-      console.log('✅ Guest updated with invite link successfully');
+      console.log('Guest updated with invite link successfully');
       return inviteLink;
       
     } catch (error) {
-      console.error('❌ Error generating invite link:', error);
+      console.error('Error generating invite link:', error);
       throw error;
     }
   };
@@ -349,7 +351,7 @@ export const EventProvider: React.FC<EventProviderProps> = ({ children }) => {
   // GET LATEST SUBMITTED EVENT
   const getLatestSubmittedEventId = async (): Promise<string | null> => {
     try {
-      console.log('🔄 Fetching latest submitted events...');
+      console.log('Fetching latest submitted events...');
       
       const session = await validateUserSession();
       if (!session) return null;
@@ -360,20 +362,20 @@ export const EventProvider: React.FC<EventProviderProps> = ({ children }) => {
       const { data, error } = await supabase
         .from('event_plans')
         .select('id, client_name, event_date, status, submitted_at, created_at')
-        .eq('user_uuid', userId)
-        .order('submitted_at', { ascending: false }) // Sort by submitted_at directly in query
+        .or(`user_uuid.eq.${userId},auth_uid.eq.${userId}`)
+        .order('submitted_at', { ascending: false })
         .limit(1);
 
       if (error) {
-        console.error('❌ Supabase error:', error);
+        console.error('Supabase error:', error);
         return null;
       }
 
-      console.log('📋 All user events:', data);
+      console.log('All user events:', data);
       
       if (data && data.length > 0) {
         const latestEvent = data[0];
-        console.log('🎯 LATEST EVENT FOUND:', {
+        console.log('LATEST EVENT FOUND:', {
           id: latestEvent.id,
           client_name: latestEvent.client_name,
           event_date: latestEvent.event_date,
@@ -384,7 +386,7 @@ export const EventProvider: React.FC<EventProviderProps> = ({ children }) => {
         return latestEvent.id.toString();
       }
       
-      console.log('❌ No events found for user');
+      console.log('No events found for user');
       return null;
     } catch (error) {
       console.error('Error fetching latest event:', error);
@@ -395,7 +397,7 @@ export const EventProvider: React.FC<EventProviderProps> = ({ children }) => {
   // GET LATEST APPROVED EVENT
   const getLatestApprovedEventId = async (): Promise<string | null> => {
     try {
-      console.log('🔄 Fetching approved events...');
+      console.log('Fetching approved events...');
       
       const session = await validateUserSession();
       if (!session) return null;
@@ -406,21 +408,21 @@ export const EventProvider: React.FC<EventProviderProps> = ({ children }) => {
       const { data, error } = await supabase
         .from('event_plans')
         .select('id, client_name, event_date, status, submitted_at')
-        .eq('user_uuid', userId)
-        .eq('status', 'Approved') // Filter for approved events only
-        .order('event_date', { ascending: false }) // Get most recent event date first
+        .or(`user_uuid.eq.${userId},auth_uid.eq.${userId}`)
+        .eq('status', 'Approved')
+        .order('event_date', { ascending: false })
         .limit(1);
 
       if (error) {
-        console.error('❌ Supabase error:', error);
+        console.error('Supabase error:', error);
         return null;
       }
 
-      console.log('📋 Approved events:', data);
+      console.log('Approved events:', data);
       
       if (data && data.length > 0) {
         const latestApproved = data[0];
-        console.log('🎯 LATEST APPROVED EVENT:', latestApproved);
+        console.log('LATEST APPROVED EVENT:', latestApproved);
         return latestApproved.id.toString();
       }
       
@@ -574,7 +576,7 @@ export const EventProvider: React.FC<EventProviderProps> = ({ children }) => {
       if (!session) return false;
 
       const { userId } = session;
-      console.log('🔄 Attempting data recovery for user:', userId);
+      console.log('Attempting data recovery for user:', userId);
 
       // Check if userId is UUID or integer
       const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(userId);
@@ -585,34 +587,34 @@ export const EventProvider: React.FC<EventProviderProps> = ({ children }) => {
         .order('created_at', { ascending: false })
         .limit(1);
 
-      // Use the appropriate column based on userId type
+      // PALITAN: Use BOTH columns for UUID users
       if (isUUID) {
-        console.log('✅ User ID is UUID, using user_uuid column');
-        query = query.eq('user_uuid', userId);
+        console.log('User ID is UUID, using BOTH user_uuid and auth_uid columns');
+        query = query.or(`user_uuid.eq.${userId},auth_uid.eq.${userId}`);
       } else {
-        console.log('✅ User ID is integer, using user_id column');
+        console.log('User ID is integer, using user_id column');
         query = query.eq('user_id', parseInt(userId));
       }
 
       const { data: events, error } = await query;
 
       if (error) {
-        console.error('❌ Recovery query error:', error);
+        console.error('Recovery query error:', error);
         return false;
       }
 
       if (events && events.length > 0) {
-        console.log('✅ Found event in database, recovering...');
+        console.log('Found event in database, recovering...');
         const eventData = await transformBackendToFrontend(events[0]);
         await AsyncStorage.setItem(eventKeyFor(userId), JSON.stringify(eventData));
         setEventData(eventData);
         return true;
       }
 
-      console.log('❌ No events found for recovery');
+      console.log('No events found for recovery');
       return false;
     } catch (error) {
-      console.error('❌ Recovery failed:', error);
+      console.error('Recovery failed:', error);
       return false;
     }
   };
@@ -664,7 +666,7 @@ export const EventProvider: React.FC<EventProviderProps> = ({ children }) => {
 
     const { userId } = session;
 
-    console.log('👤 Loading event data for user:', userId, 'Type:', typeof userId);
+    console.log('Loading event data for user:', userId, 'Type:', typeof userId);
 
     try {
       setIsLoading(true);
@@ -672,7 +674,7 @@ export const EventProvider: React.FC<EventProviderProps> = ({ children }) => {
       const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(userId);
       
       if (isUUID) {
-        console.log('✅ User ID is UUID, checking backend...');
+        console.log('User ID is UUID, checking backend...');
         
         // Check for approved events in backend using user_uuid
         const { data: approvedEvents, error } = await supabase
@@ -684,33 +686,33 @@ export const EventProvider: React.FC<EventProviderProps> = ({ children }) => {
           .limit(1);
 
         if (error) {
-          console.error('❌ Error fetching approved events:', error);
+          console.error('Error fetching approved events:', error);
         }
 
         if (approvedEvents && approvedEvents.length > 0) {
-          console.log('✅ Found approved event in backend');
+          console.log('Found approved event in backend');
           const eventData = await transformBackendToFrontend(approvedEvents[0]);
           await AsyncStorage.setItem(eventKeyFor(userId), JSON.stringify(eventData));
           setEventData(eventData);
           return;
         }
       } else {
-        console.log('ℹ️ User ID is integer, using user_id column');
+        console.log('User ID is integer, using user_id column');
         // For integer users, use user_id column
         const { data: approvedEvents, error } = await supabase
           .from('event_plans')
           .select('*')
-          .eq('user_id', parseInt(userId))  // Use user_id for integer users
+          .or(`user_uuid.eq.${userId},auth_uid.eq.${userId}`)
           .eq('status', 'Approved')
           .order('created_at', { ascending: false })
           .limit(1);
 
         if (error) {
-          console.error('❌ Error fetching approved events:', error);
+          console.error('Error fetching approved events:', error);
         }
 
         if (approvedEvents && approvedEvents.length > 0) {
-          console.log('✅ Found approved event in backend');
+          console.log('Found approved event in backend');
           const eventData = await transformBackendToFrontend(approvedEvents[0]);
           await AsyncStorage.setItem(eventKeyFor(userId), JSON.stringify(eventData));
           setEventData(eventData);
@@ -718,19 +720,19 @@ export const EventProvider: React.FC<EventProviderProps> = ({ children }) => {
         }
       }
 
-      // ✅ Fallback to local storage
+      // Fallback to local storage
       const eventDataString = await AsyncStorage.getItem(eventKeyFor(userId));
       if (eventDataString) {
         const parsedData = JSON.parse(eventDataString);
         setEventData(parsedData);
-        console.log('✅ Loaded from local storage');
+        console.log('Loaded from local storage');
       } else {
-        console.log('📭 No data found anywhere');
+        console.log('No data found anywhere');
         setEventData({});
       }
 
     } catch (error) {
-      console.error('❌ Error loading event data:', error);
+      console.error('Error loading event data:', error);
       setEventData({});
     } finally {
       setIsLoading(false);
@@ -841,7 +843,7 @@ export const EventProvider: React.FC<EventProviderProps> = ({ children }) => {
       const { data, error } = await supabase
         .from('event_plans')
         .select('status')
-        .eq('user_uuid', userId)
+        .or(`user_uuid.eq.${userId},auth_uid.eq.${userId}`)
         .order('created_at', { ascending: false })
         .limit(1)
         .single();
@@ -1013,6 +1015,7 @@ export const EventProvider: React.FC<EventProviderProps> = ({ children }) => {
         .insert([
           {
             mobile_user_id: userData.id,
+            user_id: userData.id,
             user_uuid: userData.auth_id,
             auth_uid: userData.auth_id, 
             event_type: eventSummary.event_type,
@@ -1139,13 +1142,13 @@ export const EventProvider: React.FC<EventProviderProps> = ({ children }) => {
     }
   };
 
-  // 🚀 ENHANCED: Initialize with user tracking
+  // Initialize with user tracking
   useEffect(() => {
     const initializeEventContext = async () => {
       const session = await validateUserSession();
       
       if (!session) {
-        console.log('❌ No user credentials found, clearing data');
+        console.log('No user credentials found, clearing data');
         setEventData({});
         setCurrentUserId(null);
         setIsInitialized(true);
@@ -1153,7 +1156,7 @@ export const EventProvider: React.FC<EventProviderProps> = ({ children }) => {
       }
 
       const { userId } = session;
-      console.log(`👤 Initializing for user ${userId}`);
+      console.log(`Initializing for user ${userId}`);
       
       // Set current user before loading data
       setCurrentUserId(userId);
@@ -1163,16 +1166,17 @@ export const EventProvider: React.FC<EventProviderProps> = ({ children }) => {
       await refreshEventStatus();
       
       setIsInitialized(true);
-      console.log('✅ Event context initialized for user:', userId);
+      console.log('Event context initialized for user:', userId);
     };
 
     initializeEventContext();
-  }, []);
+  }, [currentUserId]);
 
   return (
     <EventContext.Provider
       value={{
         userId: currentUserId,
+        mobileUserId: mobileUserId,
         eventData,
         updateEvent,
         eventStatus,

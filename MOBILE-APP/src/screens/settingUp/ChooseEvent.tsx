@@ -12,34 +12,43 @@ import { widthPercentageToDP as wp, heightPercentageToDP as hp } from "react-nat
 
 const ChooseEvent = () => {
   const navigation: NavigationProp<ParamListBase> = useNavigation();
-  const [modalVisible, setModalVisible] = React.useState(false);
+  const [weddingModalVisible, setWeddingModalVisible] = React.useState(false);
+  const [comingSoonModalVisible, setComingSoonModalVisible] = React.useState(false);
+  const [comingSoonMessage, setComingSoonMessage] = React.useState("");
 
   const { updateEvent, debugStorageKeys } = useEvent();
+  
   const handleOptionPress = async (selectedWeddingType: string) => {
     await updateEvent('event_type', 'Wedding');
     await updateEvent('wedding_type', selectedWeddingType);
     await debugStorageKeys();
     
-    setModalVisible(false);
+    setWeddingModalVisible(false);
     
     setTimeout(() => navigation.navigate('EventPrice'), 100);
+  };
+
+  const showComingSoonModal = (eventType: string) => {
+    setComingSoonMessage(`${eventType} is coming soon!`);
+    setComingSoonModalVisible(true);
   };
 
   return (
     <SafeAreaProvider>
       <>
+        {/* Wedding Modal */}
         <Modal
-          visible={modalVisible}
+          visible={weddingModalVisible}
           transparent={true}
           animationType="fade"
-          onRequestClose={() => setModalVisible(false)}
+          onRequestClose={() => setWeddingModalVisible(false)}
           statusBarTranslucent={true}
         >
           <View style={styles.modalOverlay}>
             <View style={styles.modalContainer}>
               <TouchableOpacity
                 style={styles.closeButton}
-                onPress={() => setModalVisible(false)}
+                onPress={() => setWeddingModalVisible(false)}
               >
                 <Text style={styles.closeButtonText}>&times;</Text>
               </TouchableOpacity>
@@ -96,6 +105,44 @@ const ChooseEvent = () => {
           </View>
         </Modal>
 
+        {/* Coming Soon Modal */}
+        <Modal
+          visible={comingSoonModalVisible}
+          transparent={true}
+          animationType="fade"
+          onRequestClose={() => setComingSoonModalVisible(false)}
+          statusBarTranslucent={true}
+        >
+          <View style={styles.modalOverlay}>
+            <View style={styles.comingSoonModalContainer}>
+              <TouchableOpacity
+                style={styles.closeButton}
+                onPress={() => setComingSoonModalVisible(false)}
+              >
+                <Text style={styles.closeButtonText}>&times;</Text>
+              </TouchableOpacity>
+
+              <Image
+                source={require("../../assets/flowers.png")}
+                style={{ width: wp("14%"), height: wp("14%"), marginBottom: hp('2%') }}
+              />
+
+              <Text style={styles.comingSoonTitle}>Coming Soon!</Text>
+              
+              <Text style={styles.comingSoonMessage}>
+                {comingSoonMessage}
+              </Text>
+
+              <TouchableOpacity
+                style={styles.okButton}
+                onPress={() => setComingSoonModalVisible(false)}
+              >
+                <Text style={styles.okButtonText}>OK</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </Modal>
+
         <SafeAreaView style={{ flex: 1 }}>
           <LinearGradient
               colors={["#FFFFFF", "#f2e8e2ff"]}
@@ -137,7 +184,7 @@ const ChooseEvent = () => {
 
             {/* WEDDING */}
             <TouchableOpacity
-              onPress={() => setModalVisible(true)}
+              onPress={() => setWeddingModalVisible(true)}
               activeOpacity={0.9}
             >
               <View style={styles.weddingContainer}>
@@ -163,74 +210,89 @@ const ChooseEvent = () => {
             </TouchableOpacity>
 
             {/* DEBUT */}
-            <View style={styles.weddingContainer}>
-              <View>
-                <Image
-                  source={require("../../assets/select.png")}
-                  style={styles.select}
-                />
-
-                <View style={styles.beforeImageCentered}>
+            <TouchableOpacity
+              onPress={() => showComingSoonModal("Debut")}
+              activeOpacity={0.9}
+            >
+              <View style={styles.weddingContainer}>
+                <View>
                   <Image
-                    source={require("../../assets/DEBUTIMG.png")}
-                    style={[styles.weddingImage, { borderRadius: wp("4%") }]}
-                    resizeMode="cover"
+                    source={require("../../assets/select.png")}
+                    style={styles.select}
                   />
-                  <View style={styles.beforeImage} />
-                  <Text style={styles.overlayTextTop}>DEBUT</Text>
-                  <Text style={styles.overlayTextBottom}>
-                    Step into elegance and make your 18th unforgettable.
-                  </Text>
+
+                  <View style={styles.beforeImageCentered}>
+                    <Image
+                      source={require("../../assets/DEBUTIMG.png")}
+                      style={[styles.weddingImage, { borderRadius: wp("4%") }]}
+                      resizeMode="cover"
+                    />
+                    <View style={styles.beforeImage} />
+                    <Text style={styles.overlayTextTop}>DEBUT</Text>
+                    <Text style={styles.overlayTextBottom}>
+                      Step into elegance and make your 18th unforgettable.
+                    </Text>
+                  </View>
                 </View>
               </View>
-            </View>
+            </TouchableOpacity>
 
             {/* PARTIES */}
-            <View style={styles.weddingContainer}>
-              <View>
-                <Image
-                  source={require("../../assets/select.png")}
-                  style={styles.select}
-                />
-
-                <View style={styles.beforeImageCentered}>
+            <TouchableOpacity
+              onPress={() => showComingSoonModal("Parties")}
+              activeOpacity={0.9}
+            >
+              <View style={styles.weddingContainer}>
+                <View>
                   <Image
-                    source={require("../../assets/PARTIESIMG.png")}
-                    style={[styles.weddingImage, { borderRadius: wp("4%") }]}
-                    resizeMode="cover"
+                    source={require("../../assets/select.png")}
+                    style={styles.select}
                   />
-                  <View style={styles.beforeImage} />
-                  <Text style={styles.overlayTextTop}>PARTIES</Text>
-                  <Text style={styles.overlayTextBottom}>
-                    Celebrate your special day with us! We’ll take care of the
-                    rest.
-                  </Text>
+
+                  <View style={styles.beforeImageCentered}>
+                    <Image
+                      source={require("../../assets/PARTIESIMG.png")}
+                      style={[styles.weddingImage, { borderRadius: wp("4%") }]}
+                      resizeMode="cover"
+                    />
+                    <View style={styles.beforeImage} />
+                    <Text style={styles.overlayTextTop}>PARTIES</Text>
+                    <Text style={styles.overlayTextBottom}>
+                      Celebrate your special day with us! We'll take care of the
+                      rest.
+                    </Text>
+                  </View>
                 </View>
               </View>
-            </View>
+            </TouchableOpacity>
 
             {/* OTHERS */}
-            <View style={styles.weddingContainer}>
-              <View>
-                <Image
-                  source={require("../../assets/select.png")}
-                  style={styles.select}
-                />
-
-                <View style={styles.beforeImageCentered}>
+            <TouchableOpacity
+              onPress={() => showComingSoonModal("Other Events")}
+              activeOpacity={0.9}
+            >
+              <View style={styles.weddingContainer}>
+                <View>
                   <Image
-                    source={require("../../assets/OTHERIMG.png")}
-                    style={[styles.weddingImage, { borderRadius: wp("4%") }]}
-                    resizeMode="cover"
+                    source={require("../../assets/select.png")}
+                    style={styles.select}
                   />
-                  <View style={styles.beforeImage} />
-                  <Text style={styles.overlayTextTop}>OTHERS</Text>
-                  <Text style={styles.overlayTextBottom}>
-                    Not listed? Tell us more about it!
-                  </Text>
+
+                  <View style={styles.beforeImageCentered}>
+                    <Image
+                      source={require("../../assets/OTHERIMG.png")}
+                      style={[styles.weddingImage, { borderRadius: wp("4%") }]}
+                      resizeMode="cover"
+                    />
+                    <View style={styles.beforeImage} />
+                    <Text style={styles.overlayTextTop}>OTHERS</Text>
+                    <Text style={styles.overlayTextBottom}>
+                      Not listed? Tell us more about it!
+                    </Text>
+                  </View>
                 </View>
               </View>
-            </View>
+            </TouchableOpacity>
           </LinearGradient>
         </SafeAreaView>
       </>
@@ -373,6 +435,16 @@ const styles = StyleSheet.create({
     paddingHorizontal: wp('10%'),
     backgroundColor: colors.white,
   },
+
+  comingSoonModalContainer: {
+    borderRadius: 20,
+    maxWidth: wp('80%'),
+    alignItems: 'center',
+    marginHorizontal: wp('5%'),
+    paddingVertical: hp('3%'),
+    paddingHorizontal: wp('8%'),
+    backgroundColor: colors.white,
+  },
   
   closeButton: {
     width: 40,
@@ -396,6 +468,23 @@ const styles = StyleSheet.create({
     fontFamily: 'Loviena',
     marginBottom: hp('1.5%'),
   },
+
+  comingSoonTitle: {
+    fontSize: wp('6.5%'),
+    textAlign: 'center',
+    fontFamily: 'Loviena',
+    marginBottom: hp('1%'),
+    color: colors.brown,
+  },
+
+  comingSoonMessage: {
+    fontSize: wp('4.5%'),
+    textAlign: 'center',
+    fontFamily: 'Poppins',
+    marginBottom: hp('3%'),
+    color: colors.black,
+    lineHeight: wp('5.5%'),
+  },
   
   btnLink: {
     width: wp('75%'),
@@ -411,6 +500,22 @@ const styles = StyleSheet.create({
     fontSize: wp('4%'),
     textAlign: 'center',
     fontFamily: 'Poppins',
+  },
+
+  okButton: {
+    width: wp('40%'),
+    paddingVertical: hp('1.5%'),
+    backgroundColor: colors.brown,
+    borderRadius: wp('50%'),
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+
+  okButtonText: {
+    color: 'white',
+    fontSize: wp('4%'),
+    fontFamily: 'Poppins',
+    fontWeight: '600',
   },
 
 });

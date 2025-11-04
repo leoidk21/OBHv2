@@ -5,7 +5,6 @@ import { EventProvider } from './src/context/EventContext';
 import { RootStackParamList } from './src/screens/type';
 import { View, Text, StyleSheet } from 'react-native';
 
-
 {/* Get Started Screens */}
 import { LoadingScreen } from './src/screens/getstarted/Loadingpage';
 import GetStartedScreen from './src/screens/getstarted/Getstarted';

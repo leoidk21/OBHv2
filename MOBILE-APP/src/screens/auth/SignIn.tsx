@@ -1,10 +1,9 @@
 import React, { useState, useRef, useEffect } from 'react'
-import { StyleSheet, Text, View, Image, TextInput , TouchableOpacity, TouchableWithoutFeedback, Keyboard, Button} from 'react-native';
+import { StyleSheet, Text, View, Image, TextInput, TouchableOpacity, TouchableWithoutFeedback, Keyboard, Modal, Alert } from 'react-native';
 import { SafeAreaView, SafeAreaProvider } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import colors from '../config/colors';
 import { widthPercentageToDP as wp, heightPercentageToDP as hp } from 'react-native-responsive-screen';
-import { Alert } from 'react-native';
 import { useFonts } from 'expo-font';
 
 import { useNavigation } from '@react-navigation/native';
@@ -37,6 +36,7 @@ const SignIn = () => {
   const [isPasswordFocused, setIsPasswordFocused] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(false);
+  const [showForgotPasswordModal, setShowForgotPasswordModal] = useState(false);
   
   const emailRef = useRef<TextInput>(null);
   const passwordRef = useRef<TextInput>(null);
@@ -125,6 +125,15 @@ const SignIn = () => {
 
   const toggleRememberMe = () => {
     setRememberMe(!rememberMe);
+  };
+
+  const handleForgotPassword = () => {
+    // Show modal instead of navigating
+    setShowForgotPasswordModal(true);
+  };
+
+  const closeForgotPasswordModal = () => {
+    setShowForgotPasswordModal(false);
   };
 
   const handleSignIn = async () => {
@@ -249,14 +258,6 @@ const SignIn = () => {
               </TouchableOpacity>
             </View>
 
-            {/* <TouchableOpacity onPress={clearStorage}>
-              <Text>Clear Storage</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity onPress={checkSecureStore}>
-              <Text>Check Storage</Text>
-            </TouchableOpacity> */}
-
             {/* Remember Me Checkbox */}
             <View style={styles.rememberMeContainer}>
               <TouchableOpacity 
@@ -287,7 +288,7 @@ const SignIn = () => {
             </TouchableOpacity>
 
             <TouchableOpacity
-              onPress={() => navigation.navigate('ForgotPass')}
+              onPress={handleForgotPassword}
               disabled={!!loading}
             >
               <Text style={{ color: loading ? '#999' : '#000', fontFamily: "Poppins", width: wp("100%"), textAlign: 'center' }}>
@@ -308,6 +309,30 @@ const SignIn = () => {
             </Text>
             </TouchableOpacity>
           </View>
+
+          {/* Forgot Password Modal */}
+          <Modal
+            animationType="fade"
+            transparent={true}
+            visible={showForgotPasswordModal}
+            onRequestClose={closeForgotPasswordModal}
+          >
+            <View style={styles.modalOverlay}>
+              <View style={styles.modalContent}>
+                <Text style={styles.modalTitle}>Feature Unavailable</Text>
+                <Text style={styles.modalMessage}>
+                  Forgot password feature is not available at the moment. Please try again later.
+                </Text>
+                <TouchableOpacity 
+                  style={styles.modalButton}
+                  onPress={closeForgotPasswordModal}
+                >
+                  <Text style={styles.modalButtonText}>OK</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </Modal>
+
         </LinearGradient>
        </TouchableWithoutFeedback>
       </SafeAreaView>
@@ -434,7 +459,7 @@ const styles = StyleSheet.create({
   },
 
   checkboxBoxChecked: {
-    backgroundColor: colors.button, // Use your button color
+    backgroundColor: colors.button,
     borderColor: colors.button,
   },
 
@@ -442,6 +467,63 @@ const styles = StyleSheet.create({
     fontSize: wp('3.2%'),
     fontFamily: 'Poppins',
     color: '#000',
+  },
+
+  // Modal Styles
+  modalOverlay: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+  },
+
+  modalContent: {
+    width: wp('80%'),
+    backgroundColor: 'white',
+    borderRadius: 20,
+    padding: wp('6%'),
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
+    elevation: 5,
+  },
+
+  modalTitle: {
+    fontSize: wp('4.5%'),
+    fontFamily: 'Poppins',
+    fontWeight: 'bold',
+    marginBottom: hp('1.5%'),
+    textAlign: 'center',
+  },
+
+  modalMessage: {
+    fontSize: wp('3.8%'),
+    fontFamily: 'Poppins',
+    textAlign: 'center',
+    marginBottom: hp('3%'),
+    lineHeight: hp('2.5%'),
+    color: '#666',
+  },
+
+  modalButton: {
+    backgroundColor: colors.button,
+    borderRadius: wp('50%'),
+    paddingHorizontal: wp('8%'),
+    paddingVertical: hp('1.5%'),
+    minWidth: wp('30%'),
+  },
+
+  modalButtonText: {
+    color: 'white',
+    fontSize: wp('3.8%'),
+    fontFamily: 'Poppins',
+    textAlign: 'center',
+    fontWeight: '600',
   },
 });
 

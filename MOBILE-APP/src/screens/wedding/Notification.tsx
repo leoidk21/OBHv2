@@ -37,7 +37,7 @@ const Notification = () => {
     }
     
     notifications.forEach((notif, index) => {
-      console.log(`   📄 Notification ${index + 1}:`, {
+      console.log(`Notification ${index + 1}:`, {
         id: notif.id,
         user_uuid: notif.user_uuid,
         type: notif.type,
@@ -49,8 +49,8 @@ const Notification = () => {
 
   // Test function
   const testNotificationConnection = () => {
-    console.log('🧪 Testing notification connection...');
-    console.log('   Current User ID:', eventContext.userId);
+    console.log('Testing notification connection...');
+    console.log('Current User ID:', eventContext.userId);
     refreshNotifications();
   };
 
@@ -93,7 +93,7 @@ const Notification = () => {
 
   const testDatabaseQuery = async () => {
   try {
-    console.log('🧪 Testing direct database query...');
+    console.log('Testing direct database query...');
     
     const { data, error } = await supabase
       .from('notifications')
@@ -102,9 +102,9 @@ const Notification = () => {
       .order('created_at', { ascending: false });
 
     if (error) {
-      console.error('❌ Direct query error:', error);
+      console.error('Direct query error:', error);
     } else {
-      console.log(`✅ Direct query found ${data.length} notifications`);
+      console.log(`Direct query found ${data.length} notifications`);
       data.forEach((notif, index) => {
         console.log(`   Notification ${index + 1}:`, {
           id: notif.id,
@@ -116,7 +116,7 @@ const Notification = () => {
       });
     }
   } catch (error) {
-    console.error('❌ Test query error:', error);
+    console.error('Test query error:', error);
   }
 };
 
@@ -129,33 +129,11 @@ const Notification = () => {
             <NavigationSlider headerTitle="Notification" />
           </View>
 
-          {/* TEST BUTTON - Remove after testing */}
-          <TouchableOpacity 
-            style={styles.testButton}
-            onPress={testNotificationConnection}
-          >
-            <Text style={styles.testButtonText}>Test Connection</Text>
-          </TouchableOpacity>
-
-          {/* MARK ALL AS READ BUTTON */}
-          {unreadCount > 0 && (
-            <TouchableOpacity 
-              style={styles.markAllButton}
-              onPress={markAllAsRead}
-            >
-              <Text style={styles.markAllText}>Mark all as read</Text>
-            </TouchableOpacity>
-          )}
-
-          <TouchableOpacity 
-            style={styles.testButton}
-            onPress={testDatabaseQuery}
-          >
-            <Text style={styles.testButtonText}>Test DB Query</Text>
-          </TouchableOpacity>
-
           {/* CONTENT */}
-          <ScrollView style={styles.container}>
+            <ScrollView 
+              style={styles.container}
+              contentContainerStyle={styles.scrollViewContent}
+            >
             {Object.keys(groupedNotifications).map((date) => (
               <View key={date}>
                 <View style={styles.notificationHeader}>
@@ -200,18 +178,20 @@ const Notification = () => {
                           )}
                         </View>
                       )}
-                      
                       {notification.type === 'EVENT_STATUS_UPDATE' && notification.data?.remarks && (
                         <Text style={styles.remarksText}>
                           Remarks: {notification.data.remarks}
                         </Text>
                       )}
                     </View>
+                    
                     <View style={styles.timeContainer}>
                       <Text style={styles.timeText}>
                         {formatTime(notification.created_at)}
                       </Text>
                     </View>
+                    
+                    
                   </TouchableOpacity>
                 ))}
               </View>
@@ -231,6 +211,14 @@ const Notification = () => {
                 <Text style={styles.loadingText}>Loading notifications...</Text>
               </View>
             )}
+            {unreadCount > 0 && (
+              <TouchableOpacity 
+                style={styles.markAllButton}
+                onPress={markAllAsRead}
+              >
+                <Text style={styles.markAllText}>Mark all as read</Text>
+              </TouchableOpacity>
+            )}
           </ScrollView>
         </LinearGradient>
         <MenuBar activeScreen={"Notification"} />
@@ -239,139 +227,152 @@ const Notification = () => {
   );
 };
 
-// Add test button styles
 const styles = StyleSheet.create({
-  testButton: {
-    backgroundColor: '#007AFF',
-    padding: 10,
-    margin: 10,
-    borderRadius: 8,
-    alignItems: 'center',
-  },
-  testButtonText: {
-    color: 'white',
-    fontWeight: 'bold',
-  },
   markAllButton: {
-    backgroundColor: '#007AFF',
     padding: 12,
-    marginHorizontal: 16,
-    marginVertical: 8,
     borderRadius: 8,
+    marginBottom: 10,
     alignItems: 'center',
+    backgroundColor: colors.brown,
   },
+
   markAllText: {
+    fontSize: 16,
     color: 'white',
     fontWeight: 'bold',
-    fontSize: 16,
   },
+
   container: {
     flex: 1,
     paddingHorizontal: 16,
   },
+
   notificationHeader: {
-    paddingVertical: 8,
     marginTop: 16,
+    paddingVertical: 8,
   },
+
   notificationHeaderText: {
     fontSize: 16,
-    fontWeight: 'bold',
     color: '#666',
+    fontWeight: 'bold',
   },
+
   notifCard: {
-    flexDirection: 'row',
-    backgroundColor: 'white',
-    borderRadius: 12,
     padding: 16,
-    marginBottom: 12,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 3,
     elevation: 3,
+    shadowRadius: 3,
+    borderRadius: 12,
+    marginBottom: 12,
+    shadowOpacity: 0.1,
+    flexDirection: 'row',
+    shadowColor: '#000',
+    backgroundColor: 'white',
+    shadowOffset: { width: 0, height: 2 },
   },
+
   unreadCard: {
     borderLeftWidth: 4,
-    borderLeftColor: '#007AFF',
+    borderLeftColor: colors.brown,
   },
+
   notifCardImageContainer: {
-    position: 'relative',
     marginRight: 12,
+    position: 'relative',
   },
+
   notifCardImage: {
     width: 40,
     height: 40,
   },
+
   unreadDot: {
-    position: 'absolute',
     top: -2,
     right: -2,
     width: 12,
     height: 12,
-    backgroundColor: '#FF3B30',
     borderRadius: 6,
+    position: 'absolute',
+    backgroundColor: '#FF3B30',
   },
+
   notifContent: {
     flex: 1,
   },
+
   notifCardText: {
     fontSize: 16,
-    fontWeight: 'bold',
     marginBottom: 4,
+    fontWeight: 'bold',
   },
+
   notifCardSubText: {
     fontSize: 14,
     color: '#666',
     marginBottom: 8,
   },
+
   paymentDetails: {
-    marginTop: 8,
     padding: 8,
-    backgroundColor: '#f8f9fa',
+    marginTop: 8,
     borderRadius: 6,
+    backgroundColor: '#f8f9fa',
   },
+
   paymentText: {
     fontSize: 12,
     color: '#333',
     marginBottom: 2,
   },
+
   remarksText: {
     fontSize: 12,
-    fontStyle: 'italic',
-    color: '#666',
     marginTop: 4,
+    color: '#666',
+    fontStyle: 'italic',
   },
+
   timeContainer: {
     justifyContent: 'center',
   },
+
   timeText: {
     fontSize: 12,
     color: '#999',
   },
+
   emptyState: {
+    paddingVertical: 60,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 60,
   },
+
   emptyStateText: {
     fontSize: 18,
-    fontWeight: 'bold',
     color: '#666',
     marginBottom: 8,
+    fontWeight: 'bold',
   },
+
   emptyStateSubText: {
     fontSize: 14,
     color: '#999',
     textAlign: 'center',
   },
+
   loadingState: {
     alignItems: 'center',
-    justifyContent: 'center',
     paddingVertical: 40,
+    justifyContent: 'center',
   },
+
   loadingText: {
     fontSize: 16,
     color: '#666',
+  },
+
+  scrollViewContent: {
+    paddingBottom: 60,
   },
 });
 

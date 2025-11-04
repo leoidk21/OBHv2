@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react'
-import { StyleSheet, Text, View, Image, Dimensions, TextInput , Button, TouchableOpacity} from 'react-native';
+import { StyleSheet, Text, View, Image, Dimensions, TextInput , Button, TouchableOpacity, ActivityIndicator} from 'react-native';
 import { SafeAreaView, SafeAreaProvider } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import colors from '../config/colors';
@@ -10,12 +10,11 @@ import { faChevronLeft } from '@fortawesome/free-solid-svg-icons';
 import { widthPercentageToDP as wp, heightPercentageToDP as hp } from 'react-native-responsive-screen';
 import { Alert } from 'react-native';
 
-import { forgotPassword } from '../auth/user-auth'; 
+import { forgotPassword } from '../auth/user-auth';
 
 const ForgotPass = () => {
   const [email, setEmail] = useState('');
-  const [loading, setLoading] = useState(false); // Add loading state
-  const forgotText = "Enter your account email and we'll send a reset code.";
+  const [loading, setLoading] = useState(false);
   const navigation: NavigationProp<ParamListBase> = useNavigation();
 
   const handleForgotPassword = async () => {
@@ -24,25 +23,38 @@ const ForgotPass = () => {
       return;
     }
 
+    // Basic email validation
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      Alert.alert("Invalid email", "Please enter a valid email address.");
+      return;
+    }
+
     setLoading(true);
     try {
-      await forgotPassword(email);
+      const result = await forgotPassword(email);
       
+      // Show the code in alert for testing
       Alert.alert(
-        "Check Your Email", 
-        `We've sent a 6-digit verification code to ${email}. Please check your inbox and enter the code on the next screen.`,
-        [{ text: "Continue", onPress: () => navigation.navigate('SendCode', { email }) }]
+        "Verification Code Generated", 
+        `Your verification code is: ${result.code}\n\nUse this code on the next screen to reset your password.`,
+        [{ 
+          text: "Continue", 
+          onPress: () => navigation.navigate('SendCode', { email }) 
+        }]
       );
       
     } catch (error: any) {
       console.error('Forgot password error:', error);
-      const errorMessage = error?.message || 'Failed to send verification code';
+      const errorMessage = error?.message || 'Failed to generate verification code. Please try again.';
       Alert.alert("Error", errorMessage);
     } finally {
       setLoading(false);
     }
-  }
+  };
 
+  const forgotText = "Enter your email address and we'll send you a link to reset your password.";
+  
   return (
     <SafeAreaProvider>
       <SafeAreaView style={{ flex: 1 }}>
@@ -71,19 +83,29 @@ const ForgotPass = () => {
           </View>
 
           <View style={styles.formContainer}>
-            <TextInput
-              placeholder='Enter your email address'
-              placeholderTextColor="#999"
-              value={email}
-              onChangeText={(text) => setEmail(text)}           
-              style={styles.textInput}
-            />
-            <TouchableOpacity 
-                style={styles.submitBtn}
+              <TextInput
+                style={styles.textInput}
+                placeholder="Enter your email"
+                value={email}
+                onChangeText={setEmail}
+                autoCapitalize="none"
+                autoCorrect={false}
+                keyboardType="email-address"
+                editable={!loading}
+                placeholderTextColor="#999"
+              />
+              
+              <TouchableOpacity 
+                style={[styles.submitBtn, loading && styles.buttonDisabled]}
                 onPress={handleForgotPassword}
-            >
-                <Text style={styles.submitText}>SEND</Text>
-            </TouchableOpacity>
+                disabled={loading}
+              >
+                {loading ? (
+                  <ActivityIndicator color="#fff" />
+                ) : (
+                  <Text style={styles.buttonText}>Send Reset Link</Text>
+                )}
+              </TouchableOpacity>
           </View>
 
           <View style={styles.noteText}>
@@ -125,17 +147,18 @@ const styles = StyleSheet.create({
   },
 
   textInput: {
+    color: colors.black,
     borderWidth: 1,
     width: wp('80%'),
     fontSize: wp('4%'),
     borderRadius: wp('10%'),
     borderColor: colors.border,
     paddingHorizontal: wp('5%'),
-    paddingVertical: wp("3%"),
     backgroundColor: colors.white,
   },
 
   submitBtn: {
+    alignItems: 'center',
     width: wp('80%'),
     fontSize: wp('4%'),
     marginTop: hp('0.7%'),
@@ -157,7 +180,16 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     paddingHorizontal: wp('25%'),
   },
+  
+  buttonDisabled: {
+    backgroundColor: '#ccc',
+  },
 
+  buttonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '600',
+  },
 
 });
 

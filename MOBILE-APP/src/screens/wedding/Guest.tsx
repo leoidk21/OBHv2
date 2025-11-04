@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useMemo } from "react";
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context'
 import { LinearGradient } from "expo-linear-gradient";
-import { StyleSheet, Text, View, TouchableOpacity, ScrollView, TextInput, Modal, KeyboardAvoidingView, Platform, Share } from "react-native";
+import { StyleSheet, Text, View, TouchableOpacity, ScrollView, TextInput, Modal, KeyboardAvoidingView, Platform, Share, ActivityIndicator } from "react-native";
 import { widthPercentageToDP as wp, heightPercentageToDP as hp} from "react-native-responsive-screen";
 import colors from "../config/colors";
 import { FontAwesomeIcon } from "@fortawesome/react-native-fontawesome";
@@ -52,9 +52,13 @@ const GuestComponent = () => {
   const [filteredGuests, setFilteredGuests] = useState<Guest[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
 
+  const [loading, setLoading] = useState(true);
+  const [updatingGuest, setUpdatingGuest] = useState<string | null>(null);
+
   // Sync local guests with context guests
   useEffect(() => {
     setGuests(invitedGuests);
+    setLoading(false); 
   }, [invitedGuests]);
 
   // Filter guests based on search query
@@ -73,6 +77,7 @@ const GuestComponent = () => {
   // Refresh guest list function
   const handleRefresh = async () => {
     setRefreshing(true);
+    setLoading(true);
     try {
       if (loadEventData) {
         await loadEventData();
@@ -201,6 +206,17 @@ const GuestComponent = () => {
     setModalMessage(message);
     setSuccessModalVisible(true);
   };
+
+  const renderLoadingScreen = () => (
+  <View style={styles.loadingContainer}>
+      <ActivityIndicator size="large" color={colors.primary} />
+      <Text style={styles.loadingText}>Loading guests...</Text>
+    </View>
+  );
+
+  if (loading) {
+    return renderLoadingScreen();
+  }
 
   return (
     <SafeAreaProvider>
@@ -914,6 +930,22 @@ const styles = StyleSheet.create({
   saveSideRelationship: {},
   rsvpStatusContainer: {},
   rsvpText: {},
+
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+
+  loadingText: {
+    marginTop: 10,
+    fontSize: 16,
+    color: colors.brown,
+  },
+
+  guestUpdating: {
+    opacity: 0.6,
+  },
 });
 
 const getStatusColor = (status: string): string => {

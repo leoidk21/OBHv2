@@ -2,29 +2,32 @@ if (window.__LandingPageModuleInstance) {
     console.log("LandingPageModule already loaded – reusing existing instance");
     window.LandingPageModule = window.__LandingPageModuleInstance;
 } else {
-    // ============================================
-    // ADD ADMIN LOGGER TO LANDING PAGE
-    // ============================================
     if (!window.AdminLogger) {
-    console.log("Loading AdminLogger for Landing Page...");
-    window.AdminLogger = {
-        API_BASE: "https://vxukqznjkdtuytnkhldu.supabase.co/rest/v1",
-        SUPABASE_ANON_KEY: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZ4dWtxem5qa2R0dXl0bmtobGR1Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2MTI0NDE4MCwiZXhwIjoyMDc2ODIwMTgwfQ.7hCf7BDqlVuNkzP1CcbORilAzMqOHhexP4Y7bsTPRJA",
+        console.log("Loading AdminLogger for Landing Page...");
+        window.AdminLogger = {
+            API_BASE: window.supabaseConfig?.url ? `${window.supabaseConfig.url}/rest/v1` : "https://vxukqznjkdtuytnkhldu.supabase.co/rest/v1",
+            SUPABASE_ANON_KEY: window.supabaseConfig?.anonKey || "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZ4dWtxem5qa2R0dXl0bmtobGR1Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2MTI0NDE4MCwiZXhwIjoyMDc2ODIwMTgwfQ.7hCf7BDqlVuNkzP1CcbORilAzMqOHhexP4Y7bsTPRJA",
 
         /**
-         * Get current admin ID
+         * Get current admin ID - USING GLOBAL SUPABASE CLIENT
         */
         async getCurrentAdminId() {
             try {
                 console.log("🔍 Getting admin ID from Landing Page...");
                 
-                // Method 1: Get from Supabase session
+                // Method 1: Get from GLOBAL Supabase session
                 if (window.supabase && window.supabase.auth) {
+                    console.log("🔄 Using GLOBAL Supabase client for session check");
                     const { data: { session }, error } = await window.supabase.auth.getSession();
                     if (!error && session?.user?.id) {
-                        console.log("Using admin ID from session:", session.user.id);
+                        console.log("✅ Using admin ID from GLOBAL session:", session.user.id);
                         return session.user.id;
                     }
+                    if (error) {
+                        console.error("❌ Global Supabase session error:", error);
+                    }
+                } else {
+                    console.warn("❌ Global Supabase client not available");
                 }
 
                 // Method 2: Get from localStorage
@@ -33,7 +36,7 @@ if (window.__LandingPageModuleInstance) {
                     try {
                         const admin = JSON.parse(adminData);
                         if (admin.id) {
-                            console.log("Using admin ID from localStorage:", admin.id);
+                            console.log("✅ Using admin ID from localStorage:", admin.id);
                             return admin.id;
                         }
                     } catch (e) {
@@ -49,16 +52,16 @@ if (window.__LandingPageModuleInstance) {
                     console.log("🔍 Looking up admin ID by email:", adminEmail);
                     const adminId = await this.lookupAdminIdByEmail(adminEmail);
                     if (adminId) {
-                        console.log("Found admin ID by email:", adminId);
+                        console.log("✅ Found admin ID by email:", adminId);
                         return adminId;
                     }
                 }
 
-                console.warn("No admin ID found in Landing Page");
+                console.warn("❌ No admin ID found in Landing Page");
                 return null;
 
             } catch (error) {
-                console.error("Error getting admin ID:", error);
+                console.error("❌ Error getting admin ID:", error);
                 return null;
             }
         },
@@ -97,12 +100,12 @@ if (window.__LandingPageModuleInstance) {
         */
         async logAction(action, targetPage, details = {}) {
             try {
-                console.log(`Landing Page - Logging: ${action} on ${targetPage}`, details);
+                console.log(`📝 Landing Page - Logging: ${action} on ${targetPage}`, details);
                 
                 const adminId = await this.getCurrentAdminId();
                 
                 if (!adminId) {
-                    console.warn("Cannot log action: No admin ID");
+                    console.warn("❌ Cannot log action: No admin ID");
                     this.storeLogLocally(action, targetPage, details);
                     return { success: false, error: "No admin ID" };
                 }
@@ -115,7 +118,7 @@ if (window.__LandingPageModuleInstance) {
                     timestamp: new Date().toISOString()
                 };
 
-                console.log("Log entry:", logEntry);
+                console.log("📋 Log entry:", logEntry);
 
                 const response = await fetch(`${this.API_BASE}/admin_logs`, {
                     method: "POST",
@@ -134,11 +137,11 @@ if (window.__LandingPageModuleInstance) {
                 }
 
                 const data = await response.json();
-                console.log("Action logged successfully:", data);
+                console.log("✅ Action logged successfully:", data);
                 return { success: true, data };
 
             } catch (error) {
-                console.error("Failed to log action:", error);
+                console.error("❌ Failed to log action:", error);
                 this.storeLogLocally(action, targetPage, details);
                 return { success: false, error: error.message };
             }
@@ -158,18 +161,19 @@ if (window.__LandingPageModuleInstance) {
                     admin_id: localStorage.getItem("adminData") ? JSON.parse(localStorage.getItem("adminData")).id : 'unknown'
                 });
                 localStorage.setItem('pending_admin_logs', JSON.stringify(logs));
-                console.log("Log stored locally for later sync");
+                console.log("💾 Log stored locally for later sync");
             } catch (error) {
-                console.error("Failed to store log locally:", error);
+                console.error("❌ Failed to store log locally:", error);
             }
         }
     };
-    console.log("AdminLogger loaded for Landing Page");
+    console.log("✅ AdminLogger loaded for Landing Page");
 }
 
     window.LandingPageModule = (function () {
-        const API_BASE = "https://vxukqznjkdtuytnkhldu.supabase.co/rest/v1";
-        const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZ4dWtxem5qa2R0dXl0bmtobGR1Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2MTI0NDE4MCwiZXhwIjoyMDc2ODIwMTgwfQ.7hCf7BDqlVuNkzP1CcbORilAzMqOHhexP4Y7bsTPRJA";
+        // USE GLOBAL CONFIG INSTEAD OF HARDCODED VALUES
+        const API_BASE = window.supabaseConfig?.url ? `${window.supabaseConfig.url}/rest/v1` : "https://vxukqznjkdtuytnkhldu.supabase.co/rest/v1";
+        const SUPABASE_ANON_KEY = window.supabaseConfig?.anonKey || "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZ4dWtxem5qa2R0dXl0bmtobGR1Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc2MTI0NDE4MCwiZXhwIjoyMDc2ODIwMTgwfQ.7hCf7BDqlVuNkzP1CcbORilAzMqOHhexP4Y7bsTPRJA";
         
         let allEvents = [];
         let dashboardStats = null;
@@ -177,7 +181,7 @@ if (window.__LandingPageModuleInstance) {
         let isInitialized = false;
 
         // ============================================
-        // AUTHENTICATION
+        // AUTHENTICATION - USING GLOBAL SUPABASE
         // ============================================
         function isAuthenticated() {
             const token = localStorage.getItem("token");
@@ -192,6 +196,8 @@ if (window.__LandingPageModuleInstance) {
         // INIT FUNCTION
         // ============================================
         function init() {
+            console.log("🚀 LandingPageModule init started");
+            
             // Check if we're on the right page
             const isLandingPage = document.body.getAttribute("data-page") === "LandingPage";
             
@@ -217,7 +223,7 @@ if (window.__LandingPageModuleInstance) {
 
             // Check authentication
             if (!isAuthenticated()) {
-                console.warn("Not authenticated");
+                console.warn("❌ Not authenticated");
                 return;
             }
 
@@ -226,12 +232,12 @@ if (window.__LandingPageModuleInstance) {
             loadEvents();
             loadDashboardStats();
             isInitialized = true;
+            console.log("✅ LandingPageModule init completed");
         }
 
         function showContent() {
-            const landingContent = document.querySelector('.landing-content'); // Use your actual class name
+            const landingContent = document.querySelector('.landing-content');
             if (landingContent) {
-                // Small delay to ensure DOM is fully updated
                 setTimeout(() => {
                     landingContent.classList.add('ready');
                 }, 50);
@@ -357,7 +363,7 @@ if (window.__LandingPageModuleInstance) {
                 
                 return await response.json();
             } catch (error) {
-                console.error(`Fetch error for ${url}:`, error);
+                console.error(`❌ Fetch error for ${url}:`, error);
                 throw error;
             }
         }
@@ -368,7 +374,7 @@ if (window.__LandingPageModuleInstance) {
         async function loadEvents(forceRefresh = false) {
             // Don't refetch if we already have events and not forcing refresh
             if (allEvents.length > 0 && !forceRefresh) {
-                console.log("Using cached events, skipping API call");
+                console.log("📂 Using cached events, skipping API call");
                 showContent();
                 return;
             }
@@ -400,7 +406,7 @@ if (window.__LandingPageModuleInstance) {
                     throw new Error("Invalid data format received from server");
                 }
             } catch (error) {
-                console.error("Error loading events:", error);
+                console.error("❌ Error loading events:", error);
                 showNotification("Failed to load events: " + error.message, "error");
                 showContent();
             }
@@ -419,7 +425,7 @@ if (window.__LandingPageModuleInstance) {
                 // Since we don't have a stats endpoint, compute locally
                 dashboardStats = computeDashboardStatsLocally();
             } catch (error) {
-                console.error("Error loading stats:", error);
+                console.error("❌ Error loading stats:", error);
                 dashboardStats = computeDashboardStatsLocally(); // fallback
             }
 
@@ -432,7 +438,7 @@ if (window.__LandingPageModuleInstance) {
         // ============================================
         function updateDashboardCards(stats) {
             if (!stats) {
-                console.warn("No stats provided to updateDashboardCards");
+                console.warn("❌ No stats provided to updateDashboardCards");
                 return;
             }
 
@@ -474,7 +480,7 @@ if (window.__LandingPageModuleInstance) {
 
             const tbody = document.getElementById("upcoming-events-tbody");
             if (!tbody) {
-                console.error("Upcoming events table body not found");
+                console.error("❌ Upcoming events table body not found");
                 return;
             }
 
@@ -496,7 +502,7 @@ if (window.__LandingPageModuleInstance) {
                 </tr>
             `).join("");
 
-            console.log(` Displayed ${upcomingEvents.length} upcoming events`);
+            console.log(`✅ Displayed ${upcomingEvents.length} upcoming events`);
         }
 
         // ============================================
@@ -512,7 +518,7 @@ if (window.__LandingPageModuleInstance) {
             });
 
             if (outdated.length > 0) {
-                console.log(`Found ${outdated.length} outdated events — marking Completed...`);
+                console.log(`🔄 Found ${outdated.length} outdated events — marking Completed...`);
 
                 // Option A: update server in parallel
                 const promises = outdated.map(ev => markEventAsCompleted(ev.id));
@@ -587,14 +593,14 @@ if (window.__LandingPageModuleInstance) {
 
                 const data = await response.json();
                 if (data && data.length > 0) {
-                    console.log(`Event ${eventId} marked as Completed (server)`);
+                    console.log(`✅ Event ${eventId} marked as Completed (server)`);
                     return true;
                 } else {
-                    console.warn(`Server rejected completing event ${eventId}`);
+                    console.warn(`❌ Server rejected completing event ${eventId}`);
                     return false;
                 }
             } catch (err) {
-                console.error("Error marking event completed:", err);
+                console.error("❌ Error marking event completed:", err);
                 return false;
             }
         }
@@ -604,7 +610,7 @@ if (window.__LandingPageModuleInstance) {
         // ============================================
         async function viewEvent(eventId) {
             try {
-                console.log("Viewing event:", eventId);
+                console.log("👀 Viewing event:", eventId);
                 currentEventId = eventId;
 
                 const response = await fetch(
@@ -630,7 +636,7 @@ if (window.__LandingPageModuleInstance) {
                     throw new Error("Event not found in database");
                 }
             } catch (error) {
-                console.error("Error viewing event:", error);
+                console.error("❌ Error viewing event:", error);
                 showNotification("Failed to load event details: " + error.message, "error");
             }
         }
@@ -730,7 +736,7 @@ if (window.__LandingPageModuleInstance) {
         }
 
         // ============================================                     
-        // APPROVE EVENT - SUPABASE VERSION
+        // APPROVE EVENT - USING GLOBAL SUPABASE FOR AUTH
         // ============================================
         async function approveEvent() {
             if (!currentEventId) {
@@ -745,13 +751,17 @@ if (window.__LandingPageModuleInstance) {
                 const eventToApprove = allEvents.find(e => e.id === currentEventId);
                 console.log("📋 Event to approve:", eventToApprove);
                 
-                // DEBUG: Check current admin context in REGULAR admin panel
-                console.log("🔍 === REGULAR ADMIN PANEL DEBUG ===");
+                // DEBUG: Check current admin context using GLOBAL client
+                console.log("🔍 === LANDING PAGE DEBUG ===");
                 
-                // 1. Check Supabase session
-                const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-                console.log("🔍 Supabase session:", session);
-                console.log("🔍 Session error:", sessionError);
+                // 1. Check GLOBAL Supabase session
+                if (window.supabase && window.supabase.auth) {
+                    const { data: { session }, error: sessionError } = await window.supabase.auth.getSession();
+                    console.log("🔍 GLOBAL Supabase session:", session);
+                    console.log("🔍 Session error:", sessionError);
+                } else {
+                    console.error("❌ GLOBAL Supabase client not available");
+                }
                 
                 // 2. Check localStorage
                 console.log("🔍 localStorage adminData:", localStorage.getItem("adminData"));
@@ -762,8 +772,8 @@ if (window.__LandingPageModuleInstance) {
                 const adminId = await AdminLogger.getCurrentAdminId();
                 console.log("🔍 AdminLogger returned ID:", adminId);
                 
-                if (adminId) {
-                    const { data: adminProfile } = await supabase
+                if (adminId && window.supabase) {
+                    const { data: adminProfile } = await window.supabase
                         .from('admin_profiles')
                         .select('id, email, first_name, last_name')
                         .eq('id', adminId)
@@ -905,7 +915,7 @@ if (window.__LandingPageModuleInstance) {
                     loadDashboardStats(true);
                 }
             } catch (error) {
-                console.error("Error rejecting event:", error);
+                console.error("❌ Error rejecting event:", error);
                 showNotification("Failed to reject event", "error");
             }
         }
@@ -937,7 +947,7 @@ if (window.__LandingPageModuleInstance) {
                 await loadEvents(true);
                 await loadDashboardStats(true);
             } catch (error) {
-                console.error("Error deleting event:", error);
+                console.error("❌ Error deleting event:", error);
                 showNotification("Error deleting event", "error");
             }
         }
@@ -948,27 +958,6 @@ if (window.__LandingPageModuleInstance) {
         function refreshData() {
             loadEvents(true);
             loadDashboardStats(true);
-        }
-
-        // Helper function to log admin actions
-        async function logAdminAction(action, targetPage, details = {}) {
-            try {
-                const token = getAuthToken();
-                await fetch(`${API_BASE}/admin/log-action`, {
-                    method: "POST",
-                    headers: {
-                        Authorization: `Bearer ${token}`,
-                        "Content-Type": "application/json",
-                    },
-                    body: JSON.stringify({
-                        action: action,
-                        target_page: targetPage,
-                        details: details
-                    }),
-                });
-            } catch (error) {
-                console.error("Failed to log action:", error);
-            }
         }
 
         // ============================================
@@ -1065,7 +1054,7 @@ if (window.__LandingPageModuleInstance) {
                 if (currentPage === 'LandingPage' && window.LandingPageModule) {
                     console.log('🎯 Landing Page detected - refreshing events');
                     
-                    // ADD THIS: Hide content during refresh
+                    // Hide content during refresh
                     const landingContent = document.querySelector('.landing-content');
                     if (landingContent) {
                         landingContent.style.opacity = '0';
@@ -1089,7 +1078,7 @@ if (window.__LandingPageModuleInstance) {
     const isLandingPage = document.body.getAttribute("data-page") === "LandingPage";
     if (isLandingPage && window.LandingPageModule) {
         
-        // ADD THIS: Hide content initially
+        // Hide content initially
         const landingContent = document.querySelector('.landing-content');
         if (landingContent) {
             landingContent.style.opacity = '0';
@@ -1105,3 +1094,6 @@ if (window.__LandingPageModuleInstance) {
         }
     }
 })();
+
+window.initializeAdminProfile = initializeAdminProfile;
+window.updateProfileElements = updateProfileElements;

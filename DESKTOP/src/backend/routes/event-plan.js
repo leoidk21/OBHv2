@@ -472,14 +472,7 @@ router.put('/:id/status', async (req, res) => {
         const { id } = req.params;
         const { status } = req.body;
 
-        console.log(`🔄 UPDATING EVENT ${id} STATUS TO: ${status}`);
-
-        const validStatuses = ['Pending', 'Approved', 'Rejected', 'Completed'];
-        if (!validStatuses.includes(status)) {
-            return res.status(400).json({ error: 'Invalid status' });
-        }
-
-        // Get event with user info
+        // Kunin ang event kasama ang user UUID
         const currentEvent = await pool.query(
             `SELECT 
                 ep.id,
@@ -488,7 +481,7 @@ router.put('/:id/status', async (req, res) => {
                 ep.client_name,
                 ep.event_type,
                 ep.event_date,
-                mu.auth_uid as user_uuid  // ← THIS MUST BE auth_uid
+                mu.auth_uid as user_uuid
              FROM event_plans ep
              LEFT JOIN mobile_users mu ON ep.user_id = mu.id
              WHERE ep.id = $1`,
@@ -507,13 +500,13 @@ router.put('/:id/status', async (req, res) => {
             [status, id]
         );
 
-        // ✅ FIXED: Send notification with proper user UUID
+        // Mag-send ng notification kung nagbago ang status at may user_uuid
         if (event.old_status !== status && event.user_uuid) {
             console.log('📤 Sending notification to user UUID:', event.user_uuid);
             
             const notificationData = {
                 user_uuid: event.user_uuid,
-                type: 'EVENT_STATUS_UPDATE', // Consistent type
+                type: 'EVENT_STATUS_UPDATE',
                 title: `Event ${status}!`,
                 message: `Your event "${event.client_name}" has been ${status.toLowerCase()}.`,
                 data: {
@@ -530,13 +523,12 @@ router.put('/:id/status', async (req, res) => {
 
             const { data: notifData, error: notifError } = await supabase
                 .from('notifications')
-                .insert([notificationData])
-                .select();
+                .insert([notificationData]);
 
             if (notifError) {
                 console.error('❌ Notification error:', notifError);
             } else {
-                console.log('✅ Notification sent:', notifData[0]?.id);
+                console.log('✅ Notification sent');
             }
         }
 
@@ -554,7 +546,6 @@ router.put('/:id/status', async (req, res) => {
     }
 });
 
-// ======= APPROVED EVENTS DETAILS FETCH HERE ======= //
 // ================ //
 // SCHEDULE
 // ================ //
@@ -1161,99 +1152,83 @@ router.get('/invitation/:eventId/:guestId/:token', async (req, res) => {
     }
 });
 
-// In event-plan.js - ENHANCE RSVP ENDPOINT
+// RSVP ENDPOINT
 router.post('/invitation/:eventId/:guestId/:token/respond', async (req, res) => {
-  try {
-    const { eventId, guestId, token } = req.params;
-    const { status } = req.body;
+    try {
+        const { eventId, guestId, token } = req.params;
+        const { status } = req.body;
 
-    console.log('🎯 RSVP REQUEST:', { eventId, guestId, token, status });
+        console.log('🎯 RSVP REQUEST:', { eventId, guestId, token, status });
 
-    if (!['Accepted', 'Declined'].includes(status)) {
-      return res.status(400).json({ error: "Invalid status" });
-    }
+        if (!['Accepted', 'Declined'].includes(status)) {
+            return res.status(400).json({ error: "Invalid status" });
+        }
 
-    // Convert to integers
-    const numericEventId = parseInt(eventId);
-    const numericGuestId = parseInt(guestId);
+        // Update guest status
+        const updateResult = await pool.query(
+            `UPDATE event_guests 
+             SET status = $1, responded_at = NOW()
+             WHERE id = $2 AND event_plan_id = $3 AND invite_token = $4
+             RETURNING *`,
+            [status, guestId, eventId, token]
+        );
 
-    console.log('🔢 Converted IDs:', { numericEventId, numericGuestId });
+        if (updateResult.rows.length === 0) {
+            return res.status(404).json({ error: "Invalid invitation link" });
+        }
 
-    // 1. FIRST UPDATE THE GUEST'S RSVP STATUS
-    const updateResult = await pool.query(
-      `UPDATE event_guests 
-       SET status = $1, responded_at = NOW()
-       WHERE id = $2 AND event_plan_id = $3 AND invite_token = $4
-       RETURNING *`,
-      [status, numericGuestId, numericEventId, token]
-    );
+        const guest = updateResult.rows[0];
 
-    console.log('📊 Update result:', updateResult.rows);
+        // Kunin ang event owner details para sa notification
+        const eventResult = await pool.query(
+            `SELECT 
+                ep.user_id,
+                mu.auth_uid as user_uuid,
+                ep.client_name
+             FROM event_plans ep
+             LEFT JOIN mobile_users mu ON ep.user_id = mu.id
+             WHERE ep.id = $1`,
+            [eventId]
+        );
 
-    if (updateResult.rows.length === 0) {
-      console.log('❌ No rows updated - invalid invitation');
-      return res.status(404).json({ error: "Invalid invitation link" });
-    }
-
-    const guest = updateResult.rows[0];
-
-    // 2. GET EVENT DETAILS WITH USER UUID FOR NOTIFICATION
-    const eventResult = await pool.query(
-      `SELECT 
-        ep.user_id,
-        mu.auth_uid as user_uuid,  // ← THIS MUST BE auth_uid
-        CONCAT(mu.first_name, ' ', mu.last_name) AS user_name 
-       FROM event_plans ep
-       LEFT JOIN mobile_users mu ON ep.user_id = mu.id
-       WHERE ep.id = $1`,
-      [numericEventId]
-    );
-
-    console.log('📋 Event result:', eventResult.rows);
-
-    if (eventResult.rows.length > 0) {
-      const event = eventResult.rows[0];
-      
-      // ✅ FIX: Use the user_uuid from the joined mobile_users table
-      if (event.user_uuid) {
-        await supabase
-          .from('notifications')
-          .insert([
-            {
-              user_uuid: event.user_uuid,  // This is the correct UUID
-              type: 'GUEST_RSVP',
-              title: 'Guest RSVP Update',
-              message: `${guest.guest_name} has ${status.toLowerCase()} your invitation`,
-              data: {
-                eventId: numericEventId,
-                guestId: numericGuestId,
-                guestName: guest.guest_name,
-                status: status,
-                eventName: event.client_name
-              },
-              is_read: false,
-              created_at: new Date().toISOString()
+        if (eventResult.rows.length > 0) {
+            const event = eventResult.rows[0];
+            
+            // Mag-send ng notification sa event owner
+            if (event.user_uuid) {
+                await supabase
+                    .from('notifications')
+                    .insert([
+                        {
+                            user_uuid: event.user_uuid,
+                            type: 'GUEST_RSVP',
+                            title: 'Guest RSVP Update',
+                            message: `${guest.guest_name} has ${status.toLowerCase()} your invitation`,
+                            data: {
+                                eventId: parseInt(eventId),
+                                guestId: parseInt(guestId),
+                                guestName: guest.guest_name,
+                                status: status,
+                                eventName: event.client_name
+                            },
+                            is_read: false,
+                            created_at: new Date().toISOString()
+                        }
+                    ]);
+                
+                console.log('✅ RSVP notification sent to user UUID:', event.user_uuid);
             }
-          ]);
+        }
+
+        res.json({ 
+            success: true, 
+            message: `Thank you for your response! You have ${status.toLowerCase()} the invitation.`
+        });
         
-        console.log('✅ Notification sent to user UUID:', event.user_uuid);
-      } else {
-        console.log('⚠️ No user UUID found for event owner');
-      }
+    } catch (err) {
+        console.error("❌ Update RSVP error:", err);
+        res.status(500).json({ error: "Server error: " + err.message });
     }
-
-    console.log('✅ RSVP updated successfully');
-
-    res.json({ 
-      success: true, 
-      message: `Thank you for your response! You have ${status.toLowerCase()} the invitation.`
-    });
-    
-  } catch (err) {
-    console.error("❌ Update RSVP error:", err);
-    console.error("❌ Error details:", err.message);
-    res.status(500).json({ error: "Server error: " + err.message });
-  }
 });
 
 // Helper function to generate embedded link

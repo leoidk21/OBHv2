@@ -245,15 +245,16 @@
 
 .view-categories-btn {
     border: none;
-    color: white;
+    color: #000;
     cursor: pointer;
     padding: 8px 16px;
-    border-radius: 4px;
-    background: #2c5530;
+    border-radius: 8px;
+    background: white;
+    border: 1px solid #ccc;
 }
 
 .view-categories-btn:hover {
-    background: #1e3a23;
+    background: #ddd;
 }
 
 .budget-header h1 {

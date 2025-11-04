@@ -16,12 +16,12 @@ const AdminLogger = {
             if (window.supabase && window.supabase.auth) {
                 const { data: { session }, error } = await window.supabase.auth.getSession();
                 if (error) {
-                    console.error("❌ Supabase session error:", error);
+                    console.error("Supabase session error:", error);
                 } else if (session?.user?.id) {
-                    console.log("✅ Got admin ID from Supabase session:", session.user.id);
+                    console.log("Got admin ID from Supabase session:", session.user.id);
                     return session.user.id;
                 } else {
-                    console.log("❌ No Supabase session found");
+                    console.log("No Supabase session found");
                 }
             }
 
@@ -30,17 +30,17 @@ const AdminLogger = {
             if (adminData) {
                 try {
                     const admin = JSON.parse(adminData);
-                    console.log("✅ Got admin ID from localStorage:", admin.id);
+                    console.log("Got admin ID from localStorage:", admin.id);
                     return admin.id;
                 } catch (e) {
-                    console.error("❌ Error parsing adminData:", e);
+                    console.error("Error parsing adminData:", e);
                 }
             }
 
             // Method 3: Check for direct ID in localStorage
             const directAdminId = localStorage.getItem("adminId");
             if (directAdminId) {
-                console.log("✅ Got admin ID from direct localStorage:", directAdminId);
+                console.log("Got admin ID from direct localStorage:", directAdminId);
                 return directAdminId;
             }
 
@@ -52,15 +52,15 @@ const AdminLogger = {
                 console.log("🔍 Looking up admin ID by email:", adminEmail);
                 const adminId = await this.lookupAdminIdByEmail(adminEmail);
                 if (adminId) {
-                    console.log("✅ Found admin ID by email lookup:", adminId);
+                    console.log("Found admin ID by email lookup:", adminId);
                     return adminId;
                 }
             }
 
-            console.warn("⚠️ No admin ID found - logging will fail");
+            console.warn("No admin ID found - logging will fail");
             return null;
         } catch (error) {
-            console.error("❌ Error getting admin ID:", error);
+            console.error("Error getting admin ID:", error);
             return null;
         }
     },
@@ -96,15 +96,15 @@ const AdminLogger = {
      */
      async logAction(action, targetPage, details = {}) {
         try {
-            console.log(`📝 Attempting to log action: ${action} on ${targetPage}`, details);
+            console.log(`Attempting to log action: ${action} on ${targetPage}`, details);
             
             const adminId = await this.getCurrentAdminId();
             
             if (!adminId) {
-                console.warn("⚠️ Cannot log action: No admin ID found");
+                console.warn("Cannot log action: No admin ID found");
                 // Try to get admin info for debugging
                 const adminData = localStorage.getItem("adminData");
-                console.log("🔍 Current localStorage adminData:", adminData);
+                console.log("Current localStorage adminData:", adminData);
                 return { success: false, error: "No admin ID" };
             }
 
@@ -116,7 +116,7 @@ const AdminLogger = {
                 timestamp: new Date().toISOString()
             };
 
-            console.log("📝 Log entry to be saved:", logEntry);
+            console.log("Log entry to be saved:", logEntry);
 
             const response = await fetch(`${this.API_BASE}/admin_logs`, {
                 method: "POST",
@@ -131,16 +131,16 @@ const AdminLogger = {
 
             if (!response.ok) {
                 const errorText = await response.text();
-                console.error("❌ Failed to save log to database:", errorText);
+                console.error("Failed to save log to database:", errorText);
                 throw new Error(`HTTP ${response.status}: ${errorText}`);
             }
 
             const data = await response.json();
-            console.log("✅ Admin action logged successfully:", data);
+            console.log("Admin action logged successfully:", data);
             return { success: true, data };
 
         } catch (error) {
-            console.error("❌ Failed to log admin action:", error);
+            console.error("Failed to log admin action:", error);
             // Store locally as fallback
             this.storeLogLocally(action, targetPage, details);
             return { success: false, error: error.message };
@@ -162,7 +162,7 @@ const AdminLogger = {
             };
             logs.push(logEntry);
             localStorage.setItem('pending_admin_logs', JSON.stringify(logs));
-            console.log("💾 Log stored locally for later sync:", logEntry);
+            console.log("Log stored locally for later sync:", logEntry);
         } catch (error) {
             console.error("Failed to store log locally:", error);
         }
@@ -171,7 +171,7 @@ const AdminLogger = {
 
 // Make AdminLogger globally accessible
 window.AdminLogger = AdminLogger;
-console.log("✅ AdminLogger is now globally available");
+console.log("AdminLogger is now globally available");
 
 // ============================================
 // GLOBAL SUPABASE CLIENT VARIABLE
@@ -820,6 +820,25 @@ function formatEventDetails(details) {
     
     let formattedDetails = '';
     
+    // Format role update details specifically
+    if (cleanDetails.action && cleanDetails.action.includes('Role changed')) {
+        formattedDetails = cleanDetails.action;
+        
+        // Add additional context if available
+        if (cleanDetails.previous_role && cleanDetails.new_role) {
+            const prevRole = cleanDetails.previous_role.includes('super') ? 'Super Admin' : 'Admin';
+            const newRole = cleanDetails.new_role.includes('super') ? 'Super Admin' : 'Admin';
+            formattedDetails = `Role changed from ${prevRole} to ${newRole}`;
+        }
+        
+        // Add target admin info if available
+        if (cleanDetails.target_admin_id) {
+            formattedDetails += ` (Admin ID: ${cleanDetails.target_admin_id.substring(0, 8)}...)`;
+        }
+        
+        return formattedDetails;
+    }
+    
     // Format common event fields
     if (cleanDetails.event_name) {
         formattedDetails += `Event: ${cleanDetails.event_name}\n`;
@@ -833,9 +852,22 @@ function formatEventDetails(details) {
     if (cleanDetails.reason) {
         formattedDetails += `Reason: ${cleanDetails.reason}\n`;
     }
-    // If no common fields found, show the raw details
+    
+    // If no common fields found but we have an action message, use it
+    if (!formattedDetails && cleanDetails.action) {
+        return cleanDetails.action;
+    }
+    
+    // If no common fields found, show the raw details but formatted nicely
     if (!formattedDetails) {
-        return JSON.stringify(cleanDetails, null, 2);
+        // Try to create a readable version of the details
+        const readableDetails = [];
+        for (const [key, value] of Object.entries(cleanDetails)) {
+            if (key !== 'test' && value) {
+                readableDetails.push(`${key}: ${value}`);
+            }
+        }
+        return readableDetails.join(', ') || JSON.stringify(cleanDetails, null, 2);
     }
     
     return formattedDetails.trim();
@@ -1207,7 +1239,7 @@ async function populatePageFilter() {
         const uniquePages = [...new Set(logs?.map(log => log.target_page).filter(Boolean))];
         uniquePages.sort();
 
-        console.log(`✅ Found ${uniquePages.length} unique pages`);
+        console.log(`Found ${uniquePages.length} unique pages`);
 
         // Build dropdown options
         let options = '<option value="">All Pages</option>';
@@ -1216,7 +1248,7 @@ async function populatePageFilter() {
         ).join('');
 
         pageFilter.innerHTML = options;
-        console.log("✅ Page filter populated successfully");
+        console.log("Page filter populated successfully");
 
     } catch (error) {
         console.error("❌ Failed to populate page filter:", error);
@@ -1299,13 +1331,19 @@ async function loadAdmins() {
         console.error("Error loading admins:", error);
         const tbody = document.getElementById("adminsTableBody");
         if (tbody) {
-            tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; color: red;">Error loading admins</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="7" style="text-align: center; color: red;">Error loading admins</td></tr>';
         }
     }
 }
+/**
+ * Setup QR code download functionality
+ */
 
 /**
  * Display administrators in table
+ */
+/**
+ * Display administrators in table with role update functionality
  */
 function displayAdmins(admins) {
     const tbody = document.getElementById("adminsTableBody");
@@ -1316,7 +1354,7 @@ function displayAdmins(admins) {
     }
 
     if (admins.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="6" style="text-align: center;">No administrators found</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="7" style="text-align: center;">No administrators found</td></tr>';
         return;
     }
 
@@ -1326,6 +1364,8 @@ function displayAdmins(admins) {
         const isSuperAdmin = admin.role === "superadmin" || admin.role === "super_admin";
         const roleClass = isSuperAdmin ? "role-super-admin" : "role-admin";
         const roleDisplay = isSuperAdmin ? "Super Admin" : "Admin";
+        const oppositeRole = isSuperAdmin ? "admin" : "superadmin";
+        const oppositeRoleDisplay = isSuperAdmin ? "Admin" : "Super Admin";
         
         const createdDate = new Date(admin.created_at).toLocaleDateString();
         const status = admin.status?.toLowerCase() || 'pending';
@@ -1335,7 +1375,9 @@ function displayAdmins(admins) {
                 <td>${admin.first_name} ${admin.last_name}</td>
                 <td>${admin.email}</td>
                 <td>${admin.phone || "N/A"}</td>
-                <td><span class="role-badge ${roleClass}">${roleDisplay}</span></td>
+                <td>
+                    <span class="role-badge ${roleClass}">${roleDisplay}</span>
+                </td>
                 <td>${createdDate}</td>
                 <td class="action-buttons">
                     ${status === 'pending'
@@ -1346,9 +1388,90 @@ function displayAdmins(admins) {
                         : `<span class="badge badge-${status === 'approved' ? 'success' : 'danger'}">${status}</span>`
                     }
                 </td>
+                <td class="role-action-buttons">
+                    ${status === 'approved' ? `
+                        <button class="btn-small btn-warning" onclick="updateAdminRole('${admin.id}', '${admin.role}', '${oppositeRole}')">
+                            Make ${oppositeRoleDisplay}
+                        </button>
+                    ` : '<span class="text-muted">N/A</span>'}
+                </td>
             </tr>
         `;
     }).join("");
+}
+
+/**
+ * Update admin role (admin to superadmin or superadmin to admin)
+ */
+async function updateAdminRole(adminId, currentRole, newRole) {
+    try {
+        // Get current admin info for logging
+        const currentAdmin = await getCurrentUser();
+        if (!currentAdmin) {
+            alert('Error: Cannot verify your admin permissions');
+            return;
+        }
+
+        // Confirm the role change
+        const currentRoleDisplay = (currentRole === 'superadmin' || currentRole === 'super_admin') ? 'Super Admin' : 'Admin';
+        const newRoleDisplay = (newRole === 'superadmin' || newRole === 'super_admin') ? 'Super Admin' : 'Admin';
+        
+        const confirmMessage = `Are you sure you want to change this user's role from ${currentRoleDisplay} to ${newRoleDisplay}?`;
+        
+        if (!confirm(confirmMessage)) {
+            return;
+        }
+
+        console.log(`Updating admin ${adminId} role from ${currentRole} to ${newRole}`);
+
+        // Update the role in the database - REMOVE updated_at field
+        const { data, error } = await supabase
+            .from('admin_profiles')
+            .update({ 
+                role: newRole
+                // Remove updated_at if the column doesn't exist
+            })
+            .eq('id', adminId);
+
+        if (error) {
+            console.error('Supabase error:', error);
+            throw error;
+        }
+
+        console.log(`✅ Admin ${adminId} role updated to ${newRole}`);
+        
+        // Log the action
+        await AdminLogger.logAction(
+            'update_role', 
+            'Manage Administrators', 
+            {
+                target_admin_id: adminId,
+                previous_role: currentRole,
+                new_role: newRole,
+                action: `Role changed from ${currentRoleDisplay} to ${newRoleDisplay}`,
+                updated_by: currentAdmin.id,
+                updated_by_email: currentAdmin.email
+            }
+        );
+
+        // Show success message
+        alert(`Role updated successfully! User is now ${newRoleDisplay}`);
+        
+        // Reload the list
+        loadAdmins();
+        
+    } catch (error) {
+        console.error('Error updating admin role:', error);
+        
+        // More specific error messages
+        if (error.code === 'PGRST204') {
+            alert('Error: Database column not found. Please check if the role column exists.');
+        } else if (error.message?.includes('updated_at')) {
+            alert('Error: Updated timestamp column not found in database.');
+        } else {
+            alert('Error updating admin role: ' + error.message);
+        }
+    }
 }
 
 /**
@@ -1475,6 +1598,102 @@ function setupLogout() {
 }
 
 /**
+ * Setup QR code download functionality
+ */
+function setupQRDownload() {
+    const downloadBtn = document.getElementById('downloadQR');
+    const qrImage = document.querySelector('.qrCode img');
+    
+    if (!downloadBtn || !qrImage) {
+        console.warn('QR download elements not found');
+        return;
+    }
+
+    downloadBtn.addEventListener('click', async (e) => {
+        e.preventDefault();
+        
+        try {
+            console.log('Starting QR code download...');
+            
+            // Get the image source
+            const imageUrl = qrImage.src;
+            
+            // Fetch the image
+            const response = await fetch(imageUrl);
+            if (!response.ok) {
+                throw new Error(`Failed to fetch image: ${response.status}`);
+            }
+            
+            // Convert to blob
+            const blob = await response.blob();
+            
+            // Create download link
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            
+            // 👇 FIXED: Clean up the filename
+            const filename = getCleanFilename(imageUrl);
+            a.download = filename;
+            
+            // Trigger download
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            
+            // Clean up
+            window.URL.revokeObjectURL(url);
+            
+            console.log('QR code downloaded successfully as:', filename);
+            
+            // Log the download action
+            await AdminLogger.logAction(
+                'download_qr',
+                'Mobile App Installation',
+                {
+                    file_name: filename,
+                    download_time: new Date().toISOString()
+                }
+            );
+            
+        } catch (error) {
+            console.error('Error downloading QR code:', error);
+            alert('Error downloading QR code. Please try again.');
+        }
+    });
+}
+
+/**
+ * Clean up filename by decoding URL encoding and replacing spaces
+ */
+function getCleanFilename(imageUrl) {
+    try {
+        // Extract filename from URL
+        let filename = imageUrl.split('/').pop() || 'qr-code.png';
+        
+        // Decode URL-encoded characters (like %20 to spaces)
+        filename = decodeURIComponent(filename);
+        
+        // Replace spaces with hyphens and clean up
+        filename = filename
+            .replace(/\s+/g, '-')           // Replace spaces with hyphens
+            .replace(/[^a-zA-Z0-9.-]/g, '') // Remove special characters except dots and hyphens
+            .replace(/-+/g, '-')            // Replace multiple hyphens with single hyphen
+            .replace(/^-+|-+$/g, '');       // Remove leading/trailing hyphens
+        
+        // Ensure it has .png extension
+        if (!filename.toLowerCase().endsWith('.png')) {
+            filename += '.png';
+        }
+        
+        return filename;
+        
+    } catch (error) {
+        console.warn('Error cleaning filename, using default:', error);
+        return 'orchestrated-by-history-qr-code.png';
+    }
+}
+/**
  * Setup tab navigation
  */
 function setupTabs() {
@@ -1556,6 +1775,7 @@ async function initializeSuperAdmin() {
         // Setup UI interactions
         setupLogout();
         setupTabs();
+        setupQRDownload();
         
         // ⚠️ IMPORTANT: Setup filters AFTER loading logs
         await setupLogsFilters();

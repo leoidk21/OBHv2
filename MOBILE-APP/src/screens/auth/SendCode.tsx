@@ -13,35 +13,41 @@ import { useRoute, RouteProp } from '@react-navigation/native';
 
 import { verifyCode } from '../auth/user-auth';
 
-const SignUp = () => {
-  const [digits, setDigits] = useState(['', '', '', '', '', '']);
-  const inputRefs = useRef(digits.map(() => createRef()));
+const SendCode = () => {
+  const [digits, setDigits] = useState(['', '', '', '']);
+  const inputRefs = useRef<Array<React.RefObject<TextInput | null>>>([]);
+  
+  // Initialize refs
+  for (let i = 0; i < 4; i++) {
+    inputRefs.current[i] = React.createRef<TextInput>();
+  }
 
   const handleDigitChange = (index: number, value: string) => {
     const cleanedValue = value.replace(/\D/, '');
-    setDigits(digits.map((digit, i) => i === index ? cleanedValue : digit));
-    if (cleanedValue.length === 1) {
-      const nextIndex = index + 1;
-      if (nextIndex < digits.length) {
-        (inputRefs.current[nextIndex] as React.RefObject<TextInput>).current.focus();
-      }
+    const newDigits = [...digits];
+    newDigits[index] = cleanedValue;
+    setDigits(newDigits);
+    
+    if (cleanedValue.length === 1 && index < 3) {
+      inputRefs.current[index + 1].current?.focus();
     }
   };
 
-  const forgotText = "We've sent a code to your email address. Enter it below to verify.";
+  const handleKeyPress = (index: number, key: string) => {
+    if (key === 'Backspace' && digits[index] === '' && index > 0) {
+      inputRefs.current[index - 1].current?.focus();
+    }
+  };
+
   const navigation: NavigationProp<ParamListBase> = useNavigation();
-
-  // send code route
-  type SendCodeRouteProp = RouteProp<{ SendCode: { email: string } }, 'SendCode'>;
-  const route = useRoute<SendCodeRouteProp>();
+  const route = useRoute<RouteProp<{ SendCode: { email: string } }, 'SendCode'>>();
   const { email } = route.params;
-
   const [loading, setLoading] = useState(false);
 
   const handleVerifyCode = async () => {
     const code = digits.join('');
 
-    if (code.length !== 6) {
+    if (code.length !== 4) {
       Alert.alert("Error", "Please enter a 6-digit code.");
       return;
     }
@@ -63,7 +69,9 @@ const SignUp = () => {
     } finally {
       setLoading(false);
     }
-  }
+  };
+
+  const forgotText = `Please enter the code to reset your password.`;
 
   return (
     <SafeAreaProvider>
@@ -181,5 +189,5 @@ const styles = StyleSheet.create({
   },
 });
 
-export default SignUp;
+export default SendCode;
 

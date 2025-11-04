@@ -5,14 +5,53 @@ const fs = require("fs");
 
 let mainWindow;
 
+// Function to load configuration
+function loadSupabaseConfig() {
+  let config = {
+    url: process.env.SUPABASE_URL || "",
+    anonKey: process.env.SUPABASE_ANON_KEY || ""
+  };
+
+  // Try to load from config file (for production)
+  try {
+    const configPaths = [
+      path.join(__dirname, 'config.json'), // Development
+      path.join(process.resourcesPath, 'app', 'config.json'), // Production
+      path.join(process.resourcesPath, 'config.json'), // Alternative production path
+    ];
+
+    for (const configPath of configPaths) {
+      if (fs.existsSync(configPath)) {
+        console.log("📁 Found config file at:", configPath);
+        const fileConfig = JSON.parse(fs.readFileSync(configPath, 'utf8'));
+        
+        if (fileConfig.SUPABASE_URL && !config.url) {
+          config.url = fileConfig.SUPABASE_URL;
+        }
+        if (fileConfig.SUPABASE_ANON_KEY && !config.anonKey) {
+          config.anonKey = fileConfig.SUPABASE_ANON_KEY;
+        }
+        break;
+      }
+    }
+  } catch (error) {
+    console.error("❌ Error loading config file:", error);
+  }
+
+  console.log("🔐 Final Supabase Config:");
+  console.log("URL:", config.url ? "✅ LOADED" : "❌ MISSING");
+  console.log("Key:", config.anonKey ? "✅ LOADED" : "❌ MISSING");
+
+  return config;
+}
+
+const supabaseConfig = loadSupabaseConfig();
+
 const createWindow = () => {
   const preloadPath = path.resolve(__dirname, "preload.js");
 
   console.log("📁 Preload path:", preloadPath);
   console.log("📁 File exists:", fs.existsSync(preloadPath));
-
-  console.log("🔐 SUPABASE_URL:", process.env.SUPABASE_URL ? "LOADED" : "MISSING");
-  console.log("🔐 SUPABASE_ANON_KEY:", process.env.SUPABASE_ANON_KEY ? "LOADED" : "MISSING");
 
   mainWindow = new BrowserWindow({
     width: 1200,
@@ -26,10 +65,7 @@ const createWindow = () => {
       enableRemoteModule: false,
       webSecurity: true,
       preload: preloadPath,
-      additionalArguments: [
-        `--supabaseUrl=${process.env.SUPABASE_URL || ""}`,
-        `--supabaseAnonKey=${process.env.SUPABASE_ANON_KEY || ""}`,
-      ],
+      sandbox: false,
     },
   });
 
@@ -56,21 +92,6 @@ const createWindow = () => {
       },
     ]);
     contextMenu.popup({ window: mainWindow });
-  });
-
-  // Keyboard shortcut for DevTools toggle
-  app.whenReady().then(() => {
-    globalShortcut.register("Control+Shift+I", () => {
-      if (mainWindow.webContents.isDevToolsOpened()) {
-        mainWindow.webContents.closeDevTools();
-      } else {
-        mainWindow.webContents.openDevTools();
-      }
-    });
-
-    globalShortcut.register("Control+R", () => {
-      mainWindow.reload();
-    });
   });
 
   // Load your login page
@@ -114,3 +135,9 @@ app.on("will-quit", () => {
 // IPC handlers
 ipcMain.handle("get-app-version", () => app.getVersion());
 ipcMain.handle("get-platform", () => process.platform);
+
+// Supabase configuration IPC handler
+ipcMain.handle("get-supabase-config", () => {
+  console.log("📡 IPC: Providing Supabase config to renderer");
+  return supabaseConfig;
+});

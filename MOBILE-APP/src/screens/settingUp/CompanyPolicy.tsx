@@ -41,18 +41,18 @@ const CompanyPolicy = () => {
   const { eventData, saveEventToBackend, debugStorageKeys } = useEvent();
   const navigation = useNavigation<NavigationProp<ParamListBase>>();
 
-  // 🔍 DIAGNOSTIC: Check data when screen loads
+  // DIAGNOSTIC: Check data when screen loads
   useEffect(() => {
     const checkDataOnMount = async () => {
       console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-      console.log('🔍 COMPANY POLICY SCREEN MOUNTED');
+      console.log('COMPANY POLICY SCREEN MOUNTED');
       console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
       
       const userId = await SecureStore.getItemAsync("userId");
-      console.log('👤 UserId:', userId);
+      console.log('UserId:', userId);
       
       // Check memory
-      console.log('📝 EventData in memory:');
+      console.log('EventData in memory:');
       console.log('   Keys:', Object.keys(eventData));
       console.log('   Client:', eventData.client_name);
       console.log('   Partner:', eventData.partner_name);
@@ -63,14 +63,14 @@ const CompanyPolicy = () => {
       // Check storage
       if (userId) {
         const stored = await AsyncStorage.getItem(`eventData_${userId}`);
-        console.log('💾 Storage status:', !!stored);
+        console.log('Storage status:', !!stored);
         
         if (stored) {
           const parsed = JSON.parse(stored);
-          console.log('💾 Stored data keys:', Object.keys(parsed));
-          console.log('💾 Stored client:', parsed.client_name);
+          console.log('Stored data keys:', Object.keys(parsed));
+          console.log('Stored client:', parsed.client_name);
         } else {
-          console.warn('⚠️ NO DATA IN STORAGE!');
+          console.warn('NO DATA IN STORAGE!');
         }
       }
       
@@ -87,7 +87,7 @@ const CompanyPolicy = () => {
     }
 
     console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-    console.log('📋 REVIEW MODAL - Data Check:');
+    console.log('REVIEW MODAL - Data Check:');
     console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
     console.log('Package:', eventData.selected_package);
     console.log('Price:', eventData.package_price);
@@ -105,29 +105,29 @@ const CompanyPolicy = () => {
   const handleConfirmAndContinue = async () => {
     try {
       console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-      console.log('✅ CONFIRMING AND NAVIGATING');
+      console.log('CONFIRMING AND NAVIGATING');
       console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
 
       const userId = await SecureStore.getItemAsync("userId");
-      console.log('👤 UserId:', userId);
+      console.log('UserId:', userId);
 
-      console.log('📝 Memory keys:', Object.keys(eventData));
-      console.log('📝 Client:', eventData.client_name);
+      console.log('Memory keys:', Object.keys(eventData));
+      console.log('Client:', eventData.client_name);
 
       if (!userId) {
         Alert.alert('Error', 'User ID missing. Please log in again.');
         return;
       }
 
-      // ✅ Check and fix missing storage
+      // Check and fix missing storage
       let stored = await AsyncStorage.getItem(`eventData_${userId}`);
       if (!stored) {
-        console.warn('⚠️ No stored data found — saving now...');
+        console.warn('No stored data found — saving now...');
         await AsyncStorage.setItem(`eventData_${userId}`, JSON.stringify(eventData));
         stored = JSON.stringify(eventData);
-        console.log('💾 Data saved successfully to AsyncStorage!');
+        console.log('Data saved successfully to AsyncStorage!');
       } else {
-        console.log('💾 Storage already exists');
+        console.log('Storage already exists');
       }
 
       // Validate essential fields
@@ -140,14 +140,14 @@ const CompanyPolicy = () => {
       await debugStorageKeys();
       await saveEventToBackend();
 
-      console.log('🚀 Navigating to Home...');
+      console.log('Navigating to Home...');
       console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n');
 
       setShowReviewModal(false);
       navigation.navigate("Home");
 
     } catch (error) {
-      console.error('❌ Error in handleConfirmAndContinue:', error);
+      console.error('Error in handleConfirmAndContinue:', error);
       Alert.alert('Error', 'Something went wrong. Please try again.');
     }
   };
@@ -202,9 +202,10 @@ const CompanyPolicy = () => {
               <Text style={styles.sectionContent}>• {policy.content}</Text>
             </View>
           ))}
-
+        </ScrollView>
+        <View style={styles.bottomSection}>
           <View style={styles.termsCondition}>
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginLeft: wp('4%') }}>
               <CheckBox isChecked={accepted} onClick={() => setAccepted(!accepted)} />
               <Text style={{ fontFamily: 'Poppins' }}>
                 I hereby understand and agreed on these terms and conditions upon signing this contract.
@@ -221,7 +222,7 @@ const CompanyPolicy = () => {
               <Text style={styles.continue}>Continue</Text>
             </TouchableOpacity>
           </View>
-        </ScrollView>
+        </View>
 
         {/* Review Modal */}
         <Modal
@@ -411,13 +412,17 @@ const styles = StyleSheet.create({
 
     sectionHeader: {},
 
-    termsCondition: {
-      flex: 1,
-      marginTop: hp('2%'),
-      marginHorizontal: wp('5%'),
-
+    bottomSection: {
       borderTopWidth: 1,
-      paddingTop: hp('2%'),
+      paddingVertical: hp('2%'),
+      paddingHorizontal: wp('5%'),
+      borderTopColor: colors.borderv1,
+    },
+
+    termsCondition: {
+      gap: 5,
+      alignItems: 'center',
+      marginBottom: hp('2%'),
       borderColor: colors.borderv1,
     },
 
@@ -426,12 +431,7 @@ const styles = StyleSheet.create({
       alignItems: 'center',
       borderRadius: wp('50%'),
       paddingVertical: hp('1.4%'),
-      paddingHorizontal: wp('5%'),
-
-      marginTop: hp("35%"),
-
       backgroundColor: colors.button,
-      alignSelf: 'center',
     },
 
     continue: {

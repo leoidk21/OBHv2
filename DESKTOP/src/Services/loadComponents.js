@@ -104,9 +104,6 @@ function smoothScrollToAnchor(anchorId) {
 function navigateToPage(pageName) {
   console.log('Navigating to:', pageName);
   
-  // Remove localStorage usage
-  // localStorage.setItem("lastPage", pageName);
-
   document.querySelectorAll('.sidebar a').forEach(link => {
     link.classList.remove('active');
   });
@@ -166,7 +163,13 @@ async function loadPageContent(pageName) {
       BudgetPage: "../Pages/script/BudgetController.js",
       ClientsPage: "../Pages/script/ClientsController.js",
       GuestPage: "../Pages/script/GuestController.js",
+      AdminAccountPage: "../Pages/script/AdminAccount.js" // ADD THIS LINE
     };
+
+    const script = document.createElement("script");
+    script.src = "../Pages/script/AdminAccount.js";
+    script.dataset.pageScript = "GlobalAdmin";
+    document.body.appendChild(script);
 
     const scriptPath = scriptMap[pageName];
     if (scriptPath) {
@@ -183,7 +186,7 @@ async function loadPageContent(pageName) {
         console.log("Calling SchedulePage initialization...");
         setTimeout(() => {
             window.initSchedulePage();
-        }, 200); // Small delay to ensure DOM is fully rendered
+        }, 200);
     }
 
     if (pageName === "BudgetPage" && window.initBudgetPage) {
@@ -214,13 +217,96 @@ async function loadPageContent(pageName) {
         }, 200);
     }
 
-    // --- Optional per-page init hook ---
-    if (pageName === "AdminAccountPage" && typeof loadAdminProfile === "function") {
-      loadAdminProfile();
+    // --- ADD THIS FOR ADMIN ACCOUNT PAGE ---
+    if (pageName === "AdminAccountPage") {
+      console.log("🔄 Initializing Admin Account Page...");
+      setTimeout(() => {
+        // Try multiple initialization methods
+        if (window.initializeAdminAccount) {
+          window.initializeAdminAccount();
+        } else if (window.loadAdminProfile) {
+          window.loadAdminProfile();
+        } else {
+          console.log("ℹ️ No specific Admin Account init function found, using default profile loader");
+          loadAdminProfileFromAuth();
+        }
+      }, 300);
     }
 
   } catch (err) {
     console.error("Error loading page:", err);
     contentContainer.innerHTML = `<p>Error loading ${page.title}</p>`;
   }
+}
+
+// Fallback function to load admin profile
+function loadAdminProfileFromAuth() {
+  console.log("👤 Loading admin profile from Auth.js functions...");
+  
+  // Check if Auth.js functions are available
+  if (window.loadAdminProfile) {
+    window.loadAdminProfile();
+  } else {
+    console.error("❌ loadAdminProfile function not found");
+    
+    // Try to load profile data directly from localStorage as fallback
+    const adminData = localStorage.getItem("adminData");
+    if (adminData) {
+      try {
+        const profile = JSON.parse(adminData);
+        updateProfileElements(profile);
+        console.log("✅ Profile loaded from localStorage");
+      } catch (e) {
+        console.error("Error parsing adminData:", e);
+      }
+    } else {
+      console.error("❌ No admin data found in localStorage");
+    }
+  }
+}
+
+// Profile update function (same as in Auth.js)
+function updateProfileElements(data) {
+  console.log("Updating UI with profile data:", data);
+
+  const fullName = `${data.first_name} ${data.last_name}`;
+  
+  // Update all name elements
+  document.querySelectorAll("#profile-account-name").forEach(el => {
+    el.textContent = fullName;
+  });
+  
+  // Update all email elements
+  document.querySelectorAll("#profile-email").forEach(el => {
+    el.textContent = data.email || "Not provided";
+  });
+  
+  // Update all role elements
+  document.querySelectorAll("#profile-role").forEach(el => {
+    let roleText = data.role;
+    if (roleText === 'superadmin') {
+      roleText = 'SUPER ADMIN';
+    } else if (roleText === 'admin') {
+      roleText = 'ADMIN';
+    } else {
+      roleText = roleText.replace("_", " ").toUpperCase();
+    }
+    el.textContent = roleText;
+  });
+  
+  // Update phone element
+  const phoneElement = document.getElementById("profile-phone");
+  if (phoneElement) {
+    if (data.phone) {
+      let phone = data.phone.replace(/\D/g, "");
+      if (phone.startsWith("0")) {
+        phone = phone.substring(1);
+      }
+      phoneElement.textContent = `+63 ${phone.replace(/(\d{3})(\d{3})(\d{4})/, "$1 $2 $3")}`;
+    } else {
+      phoneElement.textContent = "Not provided";
+    }
+  }
+
+  console.log("✅ UI updated successfully!");
 }

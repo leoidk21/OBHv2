@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect  } from 'react'
 import { StyleSheet, Text, View, Image, TextInput, TouchableOpacity } from 'react-native';
 import { SafeAreaView, SafeAreaProvider } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -6,7 +6,7 @@ import colors from '../config/colors';
 import { useNavigation } from '@react-navigation/native';
 import { NavigationProp, ParamListBase } from '@react-navigation/native';
 import { FontAwesomeIcon } from '@fortawesome/react-native-fontawesome';
-import { faChevronLeft } from '@fortawesome/free-solid-svg-icons';
+import { faChevronLeft, faEye, faEyeSlash } from '@fortawesome/free-solid-svg-icons';
 import { widthPercentageToDP as wp, heightPercentageToDP as hp } from 'react-native-responsive-screen';
 
 import { Alert } from 'react-native';
@@ -14,16 +14,20 @@ import { useRoute, RouteProp } from '@react-navigation/native';
 
 import { resetPassword } from '../auth/user-auth';
 
-const ResetPass = () => {
-  // reset pass route
-  type ResetPassRouteProp = RouteProp<{ ResetPass: { email: string; code: string } }, 'ResetPass'>;
+type ResetPassRouteParams = {
+  email: string;
+};
 
-  const navigation: NavigationProp<ParamListBase> = useNavigation();
-  const route = useRoute<ResetPassRouteProp>();
-  const { email, code } = route.params;
-
+const ResetPass: React.FC = () => {
+  const navigation = useNavigation<NavigationProp<ParamListBase>>();
+  const route = useRoute<RouteProp<{ ResetPass: ResetPassRouteParams }, 'ResetPass'>>();
+  
+  const { email } = route.params;
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   const handleResetPassword = async () => {
     if (!newPassword || !confirmPassword) {
@@ -41,16 +45,49 @@ const ResetPass = () => {
       return;
     }
 
+    setLoading(true);
     try {
+      console.log('🔄 Starting password reset...');
       await resetPassword(email, newPassword);
-      Alert.alert("Success", "Password reset successfully!", [
-        { text: "OK", onPress: () => navigation.navigate('SignIn') }
-      ]);
+      console.log('✅ Password reset successful');
+      
+      // Use setTimeout to ensure UI is ready for Alert
+      setTimeout(() => {
+        Alert.alert(
+          "Success", 
+          "Password reset successfully!", 
+          [
+            { 
+              text: "OK", 
+              onPress: () => {
+                console.log('🔄 Navigating to SignIn');
+                navigation.navigate('SignIn');
+              }
+            }
+          ]
+        );
+      }, 300);
+      
     } catch (error: any) {
-      console.error('Error resetting password:', error);
-      const errorMessage = error?.message || 'Failed to reset password';
-      Alert.alert("Error", errorMessage);
+      console.error('❌ Error resetting password:', error);
+      const errorMessage = error?.message || 'Failed to reset password. Please try again.';
+      
+      // Show error alert instead of navigating
+      setTimeout(() => {
+        Alert.alert("Error", errorMessage);
+      }, 300);
+      
+    } finally {
+      setLoading(false);
     }
+  };
+
+  const toggleNewPasswordVisibility = () => {
+    setShowNewPassword(!showNewPassword);
+  };
+
+  const toggleConfirmPasswordVisibility = () => {
+    setShowConfirmPassword(!showConfirmPassword);
   };
 
   return (
@@ -80,26 +117,56 @@ const ResetPass = () => {
           </View>
 
           <View style={styles.formContainer}>
-            <TextInput
-              placeholder='New Password'
-              placeholderTextColor="#999"
-              value={newPassword}
-              onChangeText={setNewPassword}
-              style={styles.textInput}
-              secureTextEntry={true}
-            />
-            <TextInput
-              placeholder='Confirm Password' 
-              value={confirmPassword}
-              onChangeText={setConfirmPassword}       
-              style={styles.textInput}
-              secureTextEntry={true}
-            />
+            <View style={styles.passwordInputContainer}>
+              <TextInput
+                placeholder='New Password'
+                placeholderTextColor="#999"
+                value={newPassword}
+                onChangeText={setNewPassword}
+                style={styles.textInput}
+                secureTextEntry={!showNewPassword}
+              />
+              <TouchableOpacity 
+                style={styles.eyeIcon}
+                onPress={toggleNewPasswordVisibility}
+              >
+                <FontAwesomeIcon 
+                  icon={showNewPassword ? faEyeSlash : faEye} 
+                  size={20} 
+                  color="#999" 
+                />
+              </TouchableOpacity>
+            </View>
+
+            <View style={styles.passwordInputContainer}>
+              <TextInput
+                placeholderTextColor="#999"
+                placeholder='Confirm Password' 
+                value={confirmPassword}
+                onChangeText={setConfirmPassword}       
+                style={styles.textInput}
+                secureTextEntry={!showConfirmPassword}
+              />
+              <TouchableOpacity 
+                style={styles.eyeIcon}
+                onPress={toggleConfirmPasswordVisibility}
+              >
+                <FontAwesomeIcon 
+                  icon={showConfirmPassword ? faEyeSlash : faEye} 
+                  size={20} 
+                  color="#999" 
+                />
+              </TouchableOpacity>
+            </View>
+
             <TouchableOpacity 
               style={styles.submitBtn}
               onPress={handleResetPassword}
+              disabled={loading}
             >
-              <Text style={styles.submitText}>RESET PASSWORD</Text>
+              <Text style={styles.submitText}>
+                {loading ? 'RESETTING...' : 'RESET PASSWORD'}
+              </Text>
             </TouchableOpacity>
           </View>
 
@@ -140,15 +207,30 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
 
+  passwordInputContainer: {
+    position: 'relative',
+    width: wp('80%'),
+  },
+
   textInput: {
     borderWidth: 1,
-    width: wp('80%'),
+    width: '100%',
     fontSize: wp('4%'),
+    color: colors.black,
     borderRadius: wp('10%'),
     borderColor: colors.border,
     paddingHorizontal: wp('5%'),
     paddingVertical: wp("3%"),
     backgroundColor: colors.white,
+    paddingRight: wp('12%'), // Add padding for the eye icon
+  },
+
+  eyeIcon: {
+    position: 'absolute',
+    right: wp('4%'),
+    top: hp('2%'),
+    transform: [{ translateY: -10 }],
+    padding: wp('2%'),
   },
 
   submitBtn: {
@@ -176,4 +258,3 @@ const styles = StyleSheet.create({
 });
 
 export default ResetPass;
-
