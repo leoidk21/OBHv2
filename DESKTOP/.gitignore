@@ -23,7 +23,7 @@ Thumbs.db
 env
 env.local
 
-DESKTOP/.env
+.env
 
 # IDE files
 .vscode/
